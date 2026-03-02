@@ -5,10 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.1] - 2026-03-02
+## [0.1.1] - 2026-03-02 🎉 First stable deploy
 
 ### Security
 - Upgraded Next.js from 15.0.3 → 15.3.9 to patch CVE-2025-66478 (middleware bypass vulnerability)
+
+### Deployed
+- Live on Vercel — end-to-end generation confirmed working in production
+- Kid describes a game → OpenAI generates config → Phaser endless runner loads in browser
+- Tagged `v0.1.1-m1-stable` — first stable milestone: limited single-template generation works e2e
 
 ## [0.1.0] - 2026-03-02
 
