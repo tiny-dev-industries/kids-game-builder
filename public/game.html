@@ -37,17 +37,24 @@
     let game = null;
     let currentConfig = null;
 
-    // Default config shown when no prompt given
-    const DEFAULT_CONFIG = {
-      heroEmoji: '🐶',
-      enemyEmoji: '🐱',
-      backgroundColor: '#87CEEB',
-      groundColor: '#5a8a5a',
-      title: 'Dog Jump!',
-      speed: 250,
-      jumpForce: 580
-    };
+    // ── Shared Phaser Game options ────────────────────────────────────────────
+    function makePhaserConfig(bgColor, sceneClass) {
+      return {
+        type: Phaser.AUTO,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        backgroundColor: bgColor || '#1a1a2e',
+        scene: [sceneClass],
+        parent: document.body,
+        scale: {
+          mode: Phaser.Scale.FIT,
+          autoCenter: Phaser.Scale.CENTER_BOTH,
+        },
+        audio: { disableWebAudio: true },
+      };
+    }
 
+    // ── Dispatch on template ──────────────────────────────────────────────────
     function startGame(config) {
       currentConfig = config;
 
@@ -56,24 +63,32 @@
       if (placeholder) placeholder.style.display = 'none';
 
       // Destroy existing game
-      if (game) {
-        game.destroy(true);
-        game = null;
-      }
+      if (game) { game.destroy(true); game = null; }
 
+      if (config.template === 'topdown') {
+        startTopDownGame(config);
+      } else {
+        startRunnerGame(config);
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  RUNNER TEMPLATE (side-scroller — hero jumps over enemies)
+    // ══════════════════════════════════════════════════════════════════════════
+    function startRunnerGame(config) {
       const W = window.innerWidth;
       const H = window.innerHeight;
       const GROUND_Y = H * 0.78;
       const GROUND_HEIGHT = H - GROUND_Y;
 
-      class GameScene extends Phaser.Scene {
-        constructor() { super({ key: 'GameScene' }); }
+      class RunnerScene extends Phaser.Scene {
+        constructor() { super({ key: 'RunnerScene' }); }
 
         create() {
           this.gameOver = false;
           this.score = 0;
           this.spawnTimer = 0;
-          this.spawnInterval = 2200; // ms between enemies
+          this.spawnInterval = 2200;
           this.lastTime = 0;
 
           // Background
@@ -94,11 +109,9 @@
 
           // Ground
           this.add.rectangle(W / 2, GROUND_Y + GROUND_HEIGHT / 2, W, GROUND_HEIGHT, 0x5a8a5a);
-
-          // Ground line detail
           this.add.rectangle(W / 2, GROUND_Y + 2, W, 4, 0x3d6b3d);
 
-          // Hero (emoji text object)
+          // Hero
           this.hero = this.add.text(120, GROUND_Y - 10, config.heroEmoji, {
             fontSize: '52px'
           }).setOrigin(0.5, 1);
@@ -107,54 +120,33 @@
           this.isJumping = false;
           this.jumpForce = config.jumpForce || 580;
           this.gravity = 1400;
-
-          // Enemies array
           this.enemies = [];
 
-          // Score text
+          // Score + title text
           this.scoreTxt = this.add.text(W - 20, 20, 'Score: 0', {
-            fontSize: '24px',
-            color: '#fff',
-            stroke: '#000',
-            strokeThickness: 4,
+            fontSize: '24px', color: '#fff', stroke: '#000', strokeThickness: 4,
           }).setOrigin(1, 0);
 
-          // Title
           this.add.text(20, 20, config.title || 'Game!', {
-            fontSize: '22px',
-            color: '#fff',
-            stroke: '#000',
-            strokeThickness: 4,
+            fontSize: '22px', color: '#fff', stroke: '#000', strokeThickness: 4,
           });
 
-          // Jump on spacebar, click, or tap
+          // Input
           this.input.keyboard.on('keydown-SPACE', () => this.doJump());
           this.input.on('pointerdown', () => this.doJump());
 
-          // Start message
+          // Start hint
           this.startMsg = this.add.text(W / 2, GROUND_Y * 0.5, 'SPACE or Tap to Jump!', {
-            fontSize: '28px',
-            color: '#fff',
-            stroke: '#000',
-            strokeThickness: 5,
-            backgroundColor: '#0008',
-            padding: { x: 16, y: 8 },
+            fontSize: '28px', color: '#fff', stroke: '#000', strokeThickness: 5,
+            backgroundColor: '#0008', padding: { x: 16, y: 8 },
           }).setOrigin(0.5).setDepth(10);
-
-          // Auto-hide start message after 2s
           this.time.delayedCall(2000, () => {
             if (this.startMsg) this.startMsg.setAlpha(0);
           });
-
-          this.isStarted = true;
-          this.gameOverText = null;
         }
 
         doJump() {
-          if (this.gameOver) {
-            this.scene.restart();
-            return;
-          }
+          if (this.gameOver) { this.scene.restart(); return; }
           if (!this.isJumping) {
             this.heroVelocityY = -this.jumpForce;
             this.isJumping = true;
@@ -163,22 +155,16 @@
 
         update(time, delta) {
           if (this.gameOver) return;
-
-          const dt = delta / 1000; // seconds
+          const dt = delta / 1000;
           const groundY = GROUND_Y;
           const speed = config.speed || 250;
 
-          // Move clouds
-          this.clouds.forEach(c => {
-            c.x -= c.speed * dt;
-            if (c.x < -80) c.x = W + 80;
-          });
+          // Clouds
+          this.clouds.forEach(c => { c.x -= c.speed * dt; if (c.x < -80) c.x = W + 80; });
 
           // Hero physics
           this.heroVelocityY += this.gravity * dt;
           this.hero.y += this.heroVelocityY * dt;
-
-          // Ground collision for hero
           if (this.hero.y >= groundY - 10) {
             this.hero.y = groundY - 10;
             this.heroVelocityY = 0;
@@ -189,9 +175,7 @@
           this.spawnTimer += delta;
           if (this.spawnTimer >= this.spawnInterval) {
             this.spawnTimer = 0;
-            // Vary interval slightly for fun
             this.spawnInterval = Phaser.Math.Between(1500, 2800);
-
             const enemy = this.add.text(W + 40, groundY - 10, config.enemyEmoji, {
               fontSize: '48px'
             }).setOrigin(0.5, 1);
@@ -199,93 +183,203 @@
             this.enemies.push(enemy);
           }
 
-          // Move enemies + collision check
-          const heroBox = {
-            x: this.hero.x - 18,
-            y: this.hero.y - 44,
-            w: 36,
-            h: 44,
-          };
-
+          // Move enemies + collision
+          const heroBox = { x: this.hero.x - 18, y: this.hero.y - 44, w: 36, h: 44 };
           for (let i = this.enemies.length - 1; i >= 0; i--) {
             const e = this.enemies[i];
             e.x += e.velocityX * dt;
-
-            // Remove off-screen
             if (e.x < -60) {
-              e.destroy();
-              this.enemies.splice(i, 1);
+              e.destroy(); this.enemies.splice(i, 1);
               this.score++;
               this.scoreTxt.setText('Score: ' + this.score);
               continue;
             }
-
-            // Simple box collision
-            const eBox = {
-              x: e.x - 16,
-              y: e.y - 40,
-              w: 32,
-              h: 40,
-            };
-
-            const overlapping =
-              heroBox.x < eBox.x + eBox.w &&
-              heroBox.x + heroBox.w > eBox.x &&
-              heroBox.y < eBox.y + eBox.h &&
-              heroBox.y + heroBox.h > eBox.y;
-
-            if (overlapping) {
-              this.triggerGameOver();
-              return;
+            const eBox = { x: e.x - 16, y: e.y - 40, w: 32, h: 40 };
+            if (heroBox.x < eBox.x + eBox.w && heroBox.x + heroBox.w > eBox.x &&
+                heroBox.y < eBox.y + eBox.h && heroBox.y + heroBox.h > eBox.y) {
+              this.triggerGameOver(); return;
             }
           }
         }
 
         triggerGameOver() {
           this.gameOver = true;
-
-          // Flash hero
           this.hero.setText('💥');
-
-          // Game over panel
-          const panel = this.add.rectangle(W / 2, H / 2, 360, 200, 0x000000, 0.75)
-            .setDepth(20);
-
-          this.add.text(W / 2, H / 2 - 50, '💀 Game Over!', {
-            fontSize: '36px',
-            color: '#ff4444',
-            stroke: '#000',
-            strokeThickness: 4,
+          const W2 = window.innerWidth, H2 = window.innerHeight;
+          this.add.rectangle(W2 / 2, H2 / 2, 360, 200, 0x000000, 0.75).setDepth(20);
+          this.add.text(W2 / 2, H2 / 2 - 50, '💀 Game Over!', {
+            fontSize: '36px', color: '#ff4444', stroke: '#000', strokeThickness: 4,
           }).setOrigin(0.5).setDepth(21);
-
-          this.add.text(W / 2, H / 2 + 0, 'Score: ' + this.score, {
-            fontSize: '28px',
-            color: '#fff',
+          this.add.text(W2 / 2, H2 / 2, 'Score: ' + this.score, {
+            fontSize: '28px', color: '#fff',
           }).setOrigin(0.5).setDepth(21);
-
-          this.add.text(W / 2, H / 2 + 48, 'Tap or SPACE to play again!', {
-            fontSize: '18px',
-            color: '#aaa',
+          this.add.text(W2 / 2, H2 / 2 + 48, 'Tap or SPACE to play again!', {
+            fontSize: '18px', color: '#aaa',
           }).setOrigin(0.5).setDepth(21);
         }
       }
 
-      game = new Phaser.Game({
-        type: Phaser.AUTO,
-        width: W,
-        height: H,
-        backgroundColor: config.backgroundColor || '#87CEEB',
-        scene: [GameScene],
-        parent: document.body,
-        scale: {
-          mode: Phaser.Scale.FIT,
-          autoCenter: Phaser.Scale.CENTER_BOTH,
-        },
-        audio: { disableWebAudio: true },
-      });
+      game = new Phaser.Game(makePhaserConfig(config.backgroundColor || '#87CEEB', RunnerScene));
     }
 
-    // Listen for config or generated code from parent page
+    // ══════════════════════════════════════════════════════════════════════════
+    //  TOP-DOWN TEMPLATE (4-direction — hero dodges enemies from above)
+    // ══════════════════════════════════════════════════════════════════════════
+    function startTopDownGame(config) {
+      class TopDownScene extends Phaser.Scene {
+        constructor() { super({ key: 'TopDownScene' }); }
+
+        create() {
+          const W = this.cameras.main.width;
+          const H = this.cameras.main.height;
+
+          this.W = W; this.H = H;
+          this.heroX = W / 2;
+          this.heroY = H / 2;
+          this.enemies = [];       // {x, y, txt}
+          this.score = 0;
+          this.isGameOver = false;
+          this.lastSpawn = 0;
+          this.pointerTarget = null; // {x, y} for touch movement
+
+          // Background color set in Phaser config; add a subtle arena border
+          const borderAlpha = 0.25;
+          this.add.rectangle(W / 2, H / 2, W - 8, H - 8, 0xffffff, borderAlpha)
+            .setStrokeStyle(3, 0xffffff, 0.4);
+
+          // Hero
+          this.heroTxt = this.add.text(this.heroX, this.heroY, config.heroEmoji, {
+            fontSize: '52px', fontFamily: 'Arial'
+          }).setOrigin(0.5);
+
+          // Score + title
+          this.scoreTxt = this.add.text(W - 20, 20, 'Time: 0s', {
+            fontSize: '24px', color: '#fff', stroke: '#000', strokeThickness: 4,
+          }).setOrigin(1, 0).setDepth(5);
+
+          this.add.text(20, 20, config.title || 'Game!', {
+            fontSize: '22px', color: '#fff', stroke: '#000', strokeThickness: 4,
+          }).setDepth(5);
+
+          // Keyboard
+          this.cursors = this.input.keyboard.createCursorKeys();
+          this.wasd = this.input.keyboard.addKeys('W,A,S,D');
+
+          // Touch/pointer: hold to move toward pointer
+          this.input.on('pointerdown', (ptr) => { this.pointerTarget = { x: ptr.x, y: ptr.y }; });
+          this.input.on('pointermove', (ptr) => {
+            if (ptr.isDown) this.pointerTarget = { x: ptr.x, y: ptr.y };
+          });
+          this.input.on('pointerup', () => { this.pointerTarget = null; });
+
+          // Start hint
+          const hint = this.add.text(W / 2, H * 0.88, 'Arrow keys / WASD or tap to move!', {
+            fontSize: '22px', color: '#fff', stroke: '#000', strokeThickness: 4,
+            backgroundColor: '#0008', padding: { x: 14, y: 6 },
+          }).setOrigin(0.5).setDepth(10);
+          this.time.delayedCall(2500, () => { if (hint) hint.setAlpha(0); });
+        }
+
+        update(time, delta) {
+          if (this.isGameOver) return;
+          const dt = delta / 1000;
+          const speed = config.speed || 250;
+          const W = this.W, H = this.H;
+
+          // ── Hero movement ────────────────────────────────────────────────
+          let vx = 0, vy = 0;
+
+          if (this.cursors.left.isDown  || this.wasd.A.isDown) vx = -1;
+          if (this.cursors.right.isDown || this.wasd.D.isDown) vx =  1;
+          if (this.cursors.up.isDown    || this.wasd.W.isDown) vy = -1;
+          if (this.cursors.down.isDown  || this.wasd.S.isDown) vy =  1;
+
+          // Touch: move toward held pointer point
+          if (vx === 0 && vy === 0 && this.pointerTarget) {
+            const dx = this.pointerTarget.x - this.heroX;
+            const dy = this.pointerTarget.y - this.heroY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 8) { vx = dx / dist; vy = dy / dist; }
+          }
+
+          // Normalize diagonal keyboard input
+          if (vx !== 0 && vy !== 0) { vx *= 0.707; vy *= 0.707; }
+
+          this.heroX = Math.max(32, Math.min(W - 32, this.heroX + vx * speed * dt));
+          this.heroY = Math.max(32, Math.min(H - 32, this.heroY + vy * speed * dt));
+          this.heroTxt.setPosition(this.heroX, this.heroY);
+
+          // ── Spawn enemies ────────────────────────────────────────────────
+          const elapsed = Math.floor(time / 1000);   // seconds survived so far
+          const spawnInterval = Math.max(600, 2200 - elapsed * 80);
+          if (time - this.lastSpawn > spawnInterval) {
+            this.spawnEnemy(); this.lastSpawn = time;
+          }
+
+          // ── Move enemies + collision ─────────────────────────────────────
+          for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const e = this.enemies[i];
+            const dx = this.heroX - e.x;
+            const dy = this.heroY - e.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Circle collision (radius ~32 for both emoji)
+            if (dist < 34) { this.triggerGameOver(); return; }
+
+            if (dist > 0) {
+              e.x += (dx / dist) * speed * 0.7 * dt;
+              e.y += (dy / dist) * speed * 0.7 * dt;
+              e.txt.setPosition(e.x, e.y);
+            }
+          }
+
+          // ── Score (time survived) ────────────────────────────────────────
+          this.score = elapsed;
+          this.scoreTxt.setText('Time: ' + this.score + 's');
+        }
+
+        spawnEnemy() {
+          const W = this.W, H = this.H;
+          let x, y;
+          const side = Phaser.Math.Between(0, 3);
+          if (side === 0) { x = Phaser.Math.Between(0, W); y = -40; }
+          else if (side === 1) { x = W + 40; y = Phaser.Math.Between(0, H); }
+          else if (side === 2) { x = Phaser.Math.Between(0, W); y = H + 40; }
+          else                 { x = -40; y = Phaser.Math.Between(0, H); }
+
+          const txt = this.add.text(x, y, config.enemyEmoji, {
+            fontSize: '44px', fontFamily: 'Arial'
+          }).setOrigin(0.5);
+          this.enemies.push({ x, y, txt });
+        }
+
+        triggerGameOver() {
+          this.isGameOver = true;
+          this.heroTxt.setText('💥');
+
+          const W = this.W, H = this.H;
+          const cx = W / 2, cy = H / 2;
+
+          this.add.rectangle(cx, cy, 380, 210, 0x000000, 0.78).setDepth(20);
+          this.add.text(cx, cy - 58, '💀 Game Over!', {
+            fontSize: '36px', color: '#ff4444', stroke: '#000', strokeThickness: 4,
+          }).setOrigin(0.5).setDepth(21);
+          this.add.text(cx, cy - 8, 'Survived: ' + this.score + 's', {
+            fontSize: '28px', color: '#fff',
+          }).setOrigin(0.5).setDepth(21);
+          this.add.text(cx, cy + 42, 'Tap or SPACE to play again!', {
+            fontSize: '18px', color: '#aaa',
+          }).setOrigin(0.5).setDepth(21);
+
+          this.input.keyboard.once('keydown', () => this.scene.restart());
+          this.input.once('pointerdown', () => this.scene.restart());
+        }
+      }
+
+      game = new Phaser.Game(makePhaserConfig(config.backgroundColor || '#1a1a2e', TopDownScene));
+    }
+
+    // ── Listen for config or generated code from parent page ─────────────────
     window.addEventListener('message', (event) => {
       if (!event.data) return;
 
@@ -298,7 +392,7 @@
         startGame(event.data.config);
 
       } else if (event.data.type === 'LOAD_CODE') {
-        // Tear down runner game and any previous code game
+        // Tear down runner/topdown game and any previous code game
         if (game) { game.destroy(true); game = null; }
         if (window.__phaserGame) { window.__phaserGame.destroy(true); window.__phaserGame = null; }
 
@@ -310,7 +404,6 @@
           (new Function(event.data.code))();
         } catch (err) {
           console.error('[LOAD_CODE] Generated game error:', err);
-          // Show a friendly error in the placeholder area
           if (ph) {
             ph.style.display = '';
             ph.innerHTML = '<div class="big">⚠️</div><div>Oops, couldn\'t start that game.</div><div style="font-size:13px;color:#666;margin-top:8px">Try asking again — the AI might do better!</div>';

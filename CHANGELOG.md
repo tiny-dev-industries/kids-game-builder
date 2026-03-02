@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-03-02
+
+### Added — Milestone 4: Second Game Template + Output Target Settings
+- **Top-Down Avoid template** — second playable game type alongside the endless runner
+  - Hero spawns in the canvas center; moves freely in 4 directions (WASD / arrow keys / tap-to-move)
+  - Enemies spawn from random screen edges and swarm toward the player
+  - Spawn rate accelerates over time (`max(600ms, 2200 - elapsed×80ms)`)
+  - Circle collision detection (radius 34px); score = time survived in seconds
+  - Touch controls: hold/drag pointer → hero moves toward the held point
+  - Diagonal movement normalized (`×0.707`) so diagonal isn't faster than cardinal
+- **Template field in `GameConfig`** — `template: 'runner' | 'topdown'` (default: `'runner'`)
+  - AI system prompts updated to pick the right template from the description
+  - Examples: "tank dodging missiles in an arena" → `topdown`; "dog jumping over cats" → `runner`
+  - Template validated in `generateGameConfig()` — invalid values fall back to `'runner'`
+- **Settings → Template toggle** — live toggle between `🏃 Runner` and `⬆️ Top-Down` in the Settings tab; switches the game immediately without re-prompting the AI
+- **Settings → adaptive labels** — Speed slider label changes: "Enemy Speed" (runner) vs "Move Speed" (topdown); Ground color picker hidden when template is `topdown`
+- **Output Target settings section** (bottom of Settings tab, subtly styled)
+  - 📱 **Mobile (iPad)** toggle — when ON, appends a mobile constraint block to AI system prompts: larger emoji sizes, tap/swipe controls, no keyboard-centric mechanics
+  - 🎲 **Dimensions: 2D only** — read-only indicator (expectation-setting; will become a selector when isometric/3D support is added)
+  - Available in all settings states: before first game, during config game, during code game
+- **`mobile` flag in API** — `POST /api/generate-game` accepts `{ mobile: boolean }`; forwarded to both `generateGameConfig()` and `generateGameCode()`
+- **Adaptive chat messages** — topdown games say "WASD or tap to move!" instead of "jump!"; hint chips update to "Switch to runner" for topdown config games
+- **`game.html` refactor** — runner logic extracted into `startRunnerGame()` + `RunnerScene`; new `startTopDownGame()` + `TopDownScene`; `startGame()` dispatches on `config.template`
+- **Tags**: `v0.3.0-m3-stable` retroactively tagged on the M3 commit
+
 ## [0.3.0] - 2026-03-02
 
 ### Added — Milestone 3: Game Clone Generation

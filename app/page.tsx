@@ -59,24 +59,29 @@ function ColorInput({ hex, onChange }: { hex: string; onChange: (v: string) => v
   )
 }
 
-function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle }: {
+function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobileTarget, onMobileToggle }: {
   config: GameConfig | null
   onConfigChange: (config: GameConfig) => void
   gameMode: GameMode
   codeGameTitle: string
+  mobileTarget: boolean
+  onMobileToggle: () => void
 }) {
   // Code game: read-only panel
   if (gameMode === 'code') {
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center text-sm">
-          <div className="text-4xl mb-3">🕹️</div>
-          <p className="text-white font-semibold text-base">{codeGameTitle}</p>
-          <p className="text-xs mt-2 text-gray-500">Custom-coded game</p>
-          <p className="text-xs mt-3 text-gray-600 leading-relaxed">
-            Use the chat to change mechanics, difficulty, or style — it rebuilds the whole game!
-          </p>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex items-center justify-center p-4">
+          <div className="text-center text-sm">
+            <div className="text-4xl mb-3">🕹️</div>
+            <p className="text-white font-semibold text-base">{codeGameTitle}</p>
+            <p className="text-xs mt-2 text-gray-500">Custom-coded game</p>
+            <p className="text-xs mt-3 text-gray-600 leading-relaxed">
+              Use the chat to change mechanics, difficulty, or style — it rebuilds the whole game!
+            </p>
+          </div>
         </div>
+        <OutputTargetSection mobileTarget={mobileTarget} onMobileToggle={onMobileToggle} />
       </div>
     )
   }
@@ -84,12 +89,15 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle }: {
   // No game yet
   if (!config) {
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center text-gray-500 text-sm">
-          <div className="text-3xl mb-3">⚙️</div>
-          <p>Make a game first</p>
-          <p className="text-xs mt-1 text-gray-600">Settings will appear here</p>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex items-center justify-center p-4">
+          <div className="text-center text-gray-500 text-sm">
+            <div className="text-3xl mb-3">⚙️</div>
+            <p>Make a game first</p>
+            <p className="text-xs mt-1 text-gray-600">Settings will appear here</p>
+          </div>
         </div>
+        <OutputTargetSection mobileTarget={mobileTarget} onMobileToggle={onMobileToggle} />
       </div>
     )
   }
@@ -98,12 +106,33 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle }: {
     onConfigChange({ ...config, [field]: value })
   }
 
+  const isTopDown = config.template === 'topdown'
   const pct = Math.round(((config.speed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN)) * 100)
   const speedTrackColor = pct < 40 ? 'bg-green-500' : pct < 70 ? 'bg-yellow-500' : 'bg-red-500'
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-2">
-      <p className="text-xs text-gray-500 mb-3 px-1">Edit settings directly — updates the game live ✨</p>
+      <p className="text-xs text-gray-500 mb-2 px-1">Edit settings — updates the game live ✨</p>
+
+      {/* Template toggle */}
+      <div className="flex bg-gray-700 rounded-xl p-0.5 gap-0.5 mb-1">
+        <button
+          onClick={() => update('template', 'runner')}
+          className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            !isTopDown ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          🏃 Runner
+        </button>
+        <button
+          onClick={() => update('template', 'topdown')}
+          className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            isTopDown ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          ⬆️ Top-Down
+        </button>
+      </div>
 
       <SettingsRow icon="📛" label="Title">
         <input
@@ -129,7 +158,7 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle }: {
         </div>
       </div>
 
-      <SettingsRow icon="⚡" label={`Speed · ${config.speed}`}>
+      <SettingsRow icon="⚡" label={`${isTopDown ? 'Move Speed' : 'Enemy Speed'} · ${config.speed}`}>
         <div className="space-y-1.5 pt-0.5">
           <input
             type="range"
@@ -158,9 +187,56 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle }: {
         <ColorInput hex={config.backgroundColor} onChange={v => update('backgroundColor', v)} />
       </SettingsRow>
 
-      <SettingsRow icon="🌿" label="Ground">
-        <ColorInput hex={config.groundColor} onChange={v => update('groundColor', v)} />
-      </SettingsRow>
+      {!isTopDown && (
+        <SettingsRow icon="🌿" label="Ground">
+          <ColorInput hex={config.groundColor} onChange={v => update('groundColor', v)} />
+        </SettingsRow>
+      )}
+
+      <OutputTargetSection mobileTarget={mobileTarget} onMobileToggle={onMobileToggle} />
+    </div>
+  )
+}
+
+function OutputTargetSection({ mobileTarget, onMobileToggle }: {
+  mobileTarget: boolean
+  onMobileToggle: () => void
+}) {
+  return (
+    <div className="mt-1 pt-3 border-t border-gray-700/60">
+      <p className="text-xs text-gray-600 mb-2 px-1 uppercase tracking-wider">Output target</p>
+      <div className="space-y-2">
+        {/* Mobile toggle */}
+        <button
+          onClick={onMobileToggle}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-all ${
+            mobileTarget
+              ? 'bg-blue-900/40 border-blue-600/60 text-blue-300'
+              : 'bg-gray-700/50 border-gray-700 text-gray-400 hover:text-gray-300'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <span>📱</span>
+            <span className="font-medium">Mobile (iPad)</span>
+          </span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            mobileTarget ? 'bg-blue-500/30 text-blue-300' : 'bg-gray-600 text-gray-500'
+          }`}>
+            {mobileTarget ? 'ON' : 'OFF'}
+          </span>
+        </button>
+
+        {/* 2D indicator — read-only */}
+        <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-gray-700/50 bg-gray-700/30 text-sm opacity-60 cursor-default">
+          <span className="flex items-center gap-2">
+            <span>🎲</span>
+            <span className="text-gray-400">Dimensions</span>
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-600 text-gray-400 font-medium">
+            2D only
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -182,6 +258,9 @@ export default function Home() {
   const [gameMode, setGameMode] = useState<GameMode>(null)
   const [codeGameTitle, setCodeGameTitle] = useState('')
   const [codeAccumPrompt, setCodeAccumPrompt] = useState('')
+
+  // M4: output target settings
+  const [mobileTarget, setMobileTarget] = useState(false)
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const recognitionRef = useRef<any>(null)
@@ -246,6 +325,7 @@ export default function Home() {
           currentConfig: gameMode === 'config' ? currentConfig : undefined,
           isCodeMode,
           codeAccumPrompt: gameMode === 'code' ? newAccumPrompt : undefined,
+          mobile: mobileTarget,
         }),
       })
 
@@ -267,15 +347,18 @@ export default function Home() {
         setState('playing')
 
       } else {
-        // Config game (existing runner flow)
+        // Config game (runner or topdown)
         const config: GameConfig = data.config
         const isUpdate = gameMode !== null
+        const isTopDown = config.template === 'topdown'
 
         const assistantMessage: ChatMessage = {
           role: 'assistant',
           content: isUpdate
             ? `Updated! ${config.heroEmoji} now dodges ${config.enemyEmoji} at speed ${config.speed}. Keep going! 🎮`
-            : `I made "${config.title}" for you! ${config.heroEmoji} dodges ${config.enemyEmoji}. Press SPACE or tap to jump!`,
+            : isTopDown
+              ? `I made "${config.title}"! ${config.heroEmoji} dodges ${config.enemyEmoji} — use WASD or tap to move! ⬆️`
+              : `I made "${config.title}"! ${config.heroEmoji} dodges ${config.enemyEmoji}. Press SPACE or tap to jump! 🎮`,
         }
         setMessages(prev => [...prev, assistantMessage])
         setCurrentConfig(config)
@@ -289,7 +372,7 @@ export default function Home() {
       setError(msg)
       setState(isPlaying ? 'playing' : 'idle')
     }
-  }, [sendConfigToGame, sendCodeToGame, currentConfig, gameMode, inputMode, codeAccumPrompt, isPlaying])
+  }, [sendConfigToGame, sendCodeToGame, currentConfig, gameMode, inputMode, codeAccumPrompt, isPlaying, mobileTarget])
 
   const handleSubmit = () => {
     if (prompt.trim() && state !== 'thinking') handleGenerate(prompt)
@@ -344,7 +427,10 @@ export default function Home() {
       return ['Make it harder', 'Add a twist', 'Change the controls']
     }
     if (gameMode === 'config') {
-      return ['Make it faster', 'Make it harder', 'Change the hero']
+      const isTopDown = currentConfig?.template === 'topdown'
+      return isTopDown
+        ? ['Make it faster', 'Make it harder', 'Switch to runner']
+        : ['Make it faster', 'Make it harder', 'Change the hero']
     }
     return []
   })()
@@ -437,6 +523,8 @@ export default function Home() {
             onConfigChange={handleConfigChange}
             gameMode={gameMode}
             codeGameTitle={codeGameTitle}
+            mobileTarget={mobileTarget}
+            onMobileToggle={() => setMobileTarget(v => !v)}
           />
         ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">

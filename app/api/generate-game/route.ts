@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     // isCodeMode: explicit flag set by the "Build a Clone" UI toggle
     // codeAccumPrompt: accumulated description for iterating on code games
-    const { prompt, currentConfig, isCodeMode, codeAccumPrompt } = body
+    const { prompt, currentConfig, isCodeMode, codeAccumPrompt, mobile } = body
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
@@ -25,14 +25,15 @@ export async function POST(request: NextRequest) {
     if (shouldGenerateCode) {
       // For iterations on a code game, codeAccumPrompt holds the full accumulated description
       const codePrompt = (codeAccumPrompt as string | undefined)?.trim() || trimmed
-      const result = await generateGameCode(codePrompt)
+      const result = await generateGameCode(codePrompt, mobile === true)
       return NextResponse.json(result)   // { type: 'code', title, code }
     }
 
-    // Config path: existing runner template
+    // Config path: runner or topdown template
     const config = await generateGameConfig(
       trimmed,
-      currentConfig as GameConfig | undefined
+      currentConfig as GameConfig | undefined,
+      mobile === true
     )
     return NextResponse.json({ type: 'config', config })
 

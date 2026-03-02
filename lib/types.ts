@@ -1,4 +1,5 @@
 export interface GameConfig {
+  template: 'runner' | 'topdown'
   heroEmoji: string
   enemyEmoji: string
   backgroundColor: string
