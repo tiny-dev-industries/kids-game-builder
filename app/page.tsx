@@ -59,13 +59,42 @@ function ColorInput({ hex, onChange }: { hex: string; onChange: (v: string) => v
   )
 }
 
-function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobileTarget, onMobileToggle }: {
+function TemplateToggle({ value, onChange }: {
+  value: 'runner' | 'topdown'
+  onChange: (v: 'runner' | 'topdown') => void
+}) {
+  const isTopDown = value === 'topdown'
+  return (
+    <div className="flex bg-gray-700 rounded-xl p-0.5 gap-0.5">
+      <button
+        onClick={() => onChange('runner')}
+        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+          !isTopDown ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
+        }`}
+      >
+        🏃 Runner
+      </button>
+      <button
+        onClick={() => onChange('topdown')}
+        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+          isTopDown ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
+        }`}
+      >
+        ⬆️ Top-Down
+      </button>
+    </div>
+  )
+}
+
+function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobileTarget, onMobileToggle, preferredTemplate, onTemplatePreferenceChange }: {
   config: GameConfig | null
   onConfigChange: (config: GameConfig) => void
   gameMode: GameMode
   codeGameTitle: string
   mobileTarget: boolean
   onMobileToggle: () => void
+  preferredTemplate: 'runner' | 'topdown'
+  onTemplatePreferenceChange: (t: 'runner' | 'topdown') => void
 }) {
   // Code game: read-only panel
   if (gameMode === 'code') {
@@ -86,18 +115,25 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
     )
   }
 
-  // No game yet
+  // No game yet — show pre-game preferences
   if (!config) {
     return (
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <div className="flex items-center justify-center p-4">
-          <div className="text-center text-gray-500 text-sm">
-            <div className="text-3xl mb-3">⚙️</div>
-            <p>Make a game first</p>
-            <p className="text-xs mt-1 text-gray-600">Settings will appear here</p>
-          </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div>
+          <p className="text-xs text-gray-500 mb-2 px-1">Game type preference</p>
+          <TemplateToggle value={preferredTemplate} onChange={onTemplatePreferenceChange} />
+          <p className="text-xs text-gray-600 mt-2 px-1">
+            {preferredTemplate === 'topdown'
+              ? '⬆️ Hero moves in 4 directions — enemies swarm from edges'
+              : '🏃 Hero auto-runs — press SPACE or tap to jump'}
+          </p>
         </div>
         <OutputTargetSection mobileTarget={mobileTarget} onMobileToggle={onMobileToggle} />
+        <div className="border-t border-gray-700/50 pt-3">
+          <p className="text-xs text-gray-600 text-center px-2">
+            Game title, characters, and colors will appear here after you make a game
+          </p>
+        </div>
       </div>
     )
   }
@@ -115,24 +151,7 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
       <p className="text-xs text-gray-500 mb-2 px-1">Edit settings — updates the game live ✨</p>
 
       {/* Template toggle */}
-      <div className="flex bg-gray-700 rounded-xl p-0.5 gap-0.5 mb-1">
-        <button
-          onClick={() => update('template', 'runner')}
-          className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
-            !isTopDown ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
-          }`}
-        >
-          🏃 Runner
-        </button>
-        <button
-          onClick={() => update('template', 'topdown')}
-          className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
-            isTopDown ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
-          }`}
-        >
-          ⬆️ Top-Down
-        </button>
-      </div>
+      <TemplateToggle value={config.template} onChange={v => update('template', v)} />
 
       <SettingsRow icon="📛" label="Title">
         <input
@@ -261,6 +280,7 @@ export default function Home() {
 
   // M4: output target settings
   const [mobileTarget, setMobileTarget] = useState(false)
+  const [preferredTemplate, setPreferredTemplate] = useState<'runner' | 'topdown'>('runner')
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const recognitionRef = useRef<any>(null)
@@ -317,11 +337,16 @@ export default function Home() {
       : trimmed
 
     try {
+      // For brand-new config games, hint the AI toward the preferred template
+      const promptWithHint = (!isCodeMode && gameMode !== 'config' && gameMode !== 'code')
+        ? `${trimmed} [preferred template: ${preferredTemplate}]`
+        : trimmed
+
       const response = await fetch('/api/generate-game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: trimmed,
+          prompt: promptWithHint,
           currentConfig: gameMode === 'config' ? currentConfig : undefined,
           isCodeMode,
           codeAccumPrompt: gameMode === 'code' ? newAccumPrompt : undefined,
@@ -362,6 +387,7 @@ export default function Home() {
         }
         setMessages(prev => [...prev, assistantMessage])
         setCurrentConfig(config)
+        setPreferredTemplate(config.template)
         setGameMode('config')
         sendConfigToGame(config)
         setState('playing')
@@ -372,7 +398,7 @@ export default function Home() {
       setError(msg)
       setState(isPlaying ? 'playing' : 'idle')
     }
-  }, [sendConfigToGame, sendCodeToGame, currentConfig, gameMode, inputMode, codeAccumPrompt, isPlaying, mobileTarget])
+  }, [sendConfigToGame, sendCodeToGame, currentConfig, gameMode, inputMode, codeAccumPrompt, isPlaying, mobileTarget, preferredTemplate])
 
   const handleSubmit = () => {
     if (prompt.trim() && state !== 'thinking') handleGenerate(prompt)
@@ -525,6 +551,8 @@ export default function Home() {
             codeGameTitle={codeGameTitle}
             mobileTarget={mobileTarget}
             onMobileToggle={() => setMobileTarget(v => !v)}
+            preferredTemplate={preferredTemplate}
+            onTemplatePreferenceChange={setPreferredTemplate}
           />
         ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">

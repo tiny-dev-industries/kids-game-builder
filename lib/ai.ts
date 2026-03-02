@@ -31,6 +31,8 @@ Template examples:
 - "mouse avoiding cats" → template: "topdown"
 - "arena dodge game" → template: "topdown"
 - "bird's eye view" → template: "topdown"
+- If the prompt includes "[preferred template: topdown]", lean toward "topdown" unless the description clearly implies jumping/running
+- If the prompt includes "[preferred template: runner]", lean toward "runner" unless the description clearly implies overhead/arena movement
 - When in doubt, use "runner"
 
 Respond with ONLY valid JSON, no explanation, no markdown:
