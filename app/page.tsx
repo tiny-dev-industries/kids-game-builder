@@ -12,29 +12,55 @@ interface ChatMessage {
   content: string
 }
 
-function SpeedBar({ speed }: { speed: number }) {
-  const pct = Math.round(((speed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN)) * 100)
-  const color = pct < 40 ? 'bg-green-500' : pct < 70 ? 'bg-yellow-500' : 'bg-red-500'
+// ── Settings sub-components ────────────────────────────────────────────────
+
+function SettingsRow({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-300 ${color}`} style={{ width: `${pct}%` }} />
+    <div className="bg-gray-750 rounded-xl px-3 py-3 border border-gray-700">
+      <div className="text-xs text-gray-500 mb-1.5">{icon} {label}</div>
+      <div>{children}</div>
+    </div>
+  )
+}
+
+function EmojiInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-14 h-10 text-center text-2xl bg-gray-700 border border-gray-600 rounded-xl focus:outline-none focus:border-blue-400 transition-colors"
+      placeholder="😀"
+      title="Paste or type an emoji"
+    />
+  )
+}
+
+function ColorInput({ hex, onChange }: { hex: string; onChange: (v: string) => void }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer group w-fit">
+      <div
+        className="w-8 h-8 rounded-lg border-2 border-gray-600 group-hover:border-blue-400 transition-colors flex-shrink-0 relative overflow-hidden"
+        style={{ backgroundColor: hex }}
+        title="Click to open color picker"
+      >
+        <input
+          type="color"
+          value={hex}
+          onChange={e => onChange(e.target.value)}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
       </div>
-      <span className="text-xs text-gray-400 w-8 text-right">{speed}</span>
-    </div>
-  )
-}
-
-function ColorSwatch({ hex }: { hex: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-5 h-5 rounded border border-gray-600 flex-shrink-0" style={{ backgroundColor: hex }} />
       <span className="text-gray-300 font-mono text-xs">{hex}</span>
-    </div>
+      <span className="text-xs text-gray-600 group-hover:text-gray-400 transition-colors">click swatch</span>
+    </label>
   )
 }
 
-function SettingsPanel({ config }: { config: GameConfig | null }) {
+function SettingsPanel({ config, onConfigChange }: {
+  config: GameConfig | null
+  onConfigChange: (config: GameConfig) => void
+}) {
   if (!config) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
@@ -47,48 +73,73 @@ function SettingsPanel({ config }: { config: GameConfig | null }) {
     )
   }
 
-  const rows: { label: string; icon: string; content: React.ReactNode }[] = [
-    {
-      label: 'Title',
-      icon: '📛',
-      content: <span className="text-white font-semibold">{config.title}</span>,
-    },
-    {
-      label: 'Hero',
-      icon: '🎮',
-      content: <span className="text-3xl">{config.heroEmoji}</span>,
-    },
-    {
-      label: 'Enemy',
-      icon: '😈',
-      content: <span className="text-3xl">{config.enemyEmoji}</span>,
-    },
-    {
-      label: 'Speed',
-      icon: '⚡',
-      content: <SpeedBar speed={config.speed} />,
-    },
-    {
-      label: 'Background',
-      icon: '🎨',
-      content: <ColorSwatch hex={config.backgroundColor} />,
-    },
-    {
-      label: 'Ground',
-      icon: '🌿',
-      content: <ColorSwatch hex={config.groundColor} />,
-    },
-  ]
+  const update = <K extends keyof GameConfig>(field: K, value: GameConfig[K]) => {
+    onConfigChange({ ...config, [field]: value })
+  }
+
+  const pct = Math.round(((config.speed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN)) * 100)
+  const speedTrackColor = pct < 40 ? 'bg-green-500' : pct < 70 ? 'bg-yellow-500' : 'bg-red-500'
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-1">
-      <p className="text-xs text-gray-500 mb-3 px-1">Current game config — use the chat to change anything</p>
-      {rows.map(({ label, icon, content }) => (
-        <div key={label} className="bg-gray-750 rounded-xl px-3 py-3 border border-gray-700">
-          <div className="text-xs text-gray-500 mb-1">{icon} {label}</div>
-          <div>{content}</div>
+    <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <p className="text-xs text-gray-500 mb-3 px-1">Edit settings directly — updates the game live ✨</p>
+
+      <SettingsRow icon="📛" label="Title">
+        <input
+          type="text"
+          value={config.title}
+          onChange={e => update('title', e.target.value)}
+          maxLength={20}
+          className="w-full bg-gray-700 text-white rounded-lg px-2.5 py-1.5 text-sm font-semibold border border-gray-600 focus:outline-none focus:border-blue-400 transition-colors"
+          placeholder="Game title…"
+        />
+      </SettingsRow>
+
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <SettingsRow icon="🎮" label="Hero">
+            <EmojiInput value={config.heroEmoji} onChange={v => update('heroEmoji', v)} />
+          </SettingsRow>
         </div>
-      ))}
+        <div className="flex-1">
+          <SettingsRow icon="😈" label="Enemy">
+            <EmojiInput value={config.enemyEmoji} onChange={v => update('enemyEmoji', v)} />
+          </SettingsRow>
+        </div>
+      </div>
+
+      <SettingsRow icon="⚡" label={`Speed · ${config.speed}`}>
+        <div className="space-y-1.5 pt-0.5">
+          <input
+            type="range"
+            min={SPEED_MIN}
+            max={SPEED_MAX}
+            step={5}
+            value={config.speed}
+            onChange={e => update('speed', parseInt(e.target.value))}
+            className="w-full accent-blue-500 cursor-pointer"
+          />
+          <div className="flex items-center gap-1.5">
+            <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-100 ${speedTrackColor}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-xs text-gray-500">{SPEED_MIN}</span>
+            <span className="text-xs text-gray-500">–</span>
+            <span className="text-xs text-gray-500">{SPEED_MAX}</span>
+          </div>
+        </div>
+      </SettingsRow>
+
+      <SettingsRow icon="🎨" label="Background">
+        <ColorInput hex={config.backgroundColor} onChange={v => update('backgroundColor', v)} />
+      </SettingsRow>
+
+      <SettingsRow icon="🌿" label="Ground">
+        <ColorInput hex={config.groundColor} onChange={v => update('groundColor', v)} />
+      </SettingsRow>
     </div>
   )
 }
@@ -124,6 +175,11 @@ export default function Home() {
       iframe.contentWindow.postMessage({ type: 'LOAD_CONFIG', config }, '*')
     }
   }, [])
+
+  const handleConfigChange = useCallback((config: GameConfig) => {
+    setCurrentConfig(config)
+    sendConfigToGame(config)
+  }, [sendConfigToGame])
 
   const handleGenerate = useCallback(async (text: string) => {
     const trimmed = text.trim()
@@ -263,7 +319,7 @@ export default function Home() {
 
         {/* Tab content */}
         {activeTab === 'settings' ? (
-          <SettingsPanel config={currentConfig} />
+          <SettingsPanel config={currentConfig} onConfigChange={handleConfigChange} />
         ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 && (

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-03-02
+
+### Added
+- **Editable settings panel** — every field in the Settings tab is now a live control; changes push to the game instantly via `postMessage`
+  - Title: text input (20-char max)
+  - Hero / Enemy: emoji inputs side-by-side (paste or OS emoji picker)
+  - Speed: range slider (180–600, step 5) with a color-coded fill bar (green → yellow → red)
+  - Background / Ground: clickable color swatches open the native OS color picker; hex value displayed alongside
+- New `SettingsRow`, `EmojiInput`, `ColorInput` sub-components keep the panel clean
+- `handleConfigChange` callback in `Home` wires direct edits to `setCurrentConfig` + `sendConfigToGame` in one hop — no AI round-trip needed
+
 ## [0.2.1] - 2026-03-02
 
 ### Fixed
