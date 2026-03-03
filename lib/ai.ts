@@ -8,11 +8,32 @@ export { SPEED_MIN, SPEED_MAX }
 // Build once at module load — injected into both AI system prompts
 const ASSET_CATALOG_BLOCK = getCatalogSummary()
 
+const VALID_ACTION_TYPES = new Set([
+  'collectible', 'lives', 'shield', 'double-points', 'enemy-explode', 'speed-ramp',
+])
+
+const ACTIONS_BLOCK = `
+ACTIONS (optional array of 0–3 game-event behaviors stored in "actions" field):
+Each action: { "id": string, "type": ActionType, "name": string, "description": string, "emoji": string, "params"?: {...} }
+Action types:
+  "collectible"   — spawns pickup items players can collect for bonus points. params: { spawnEmoji, points, spawnInterval }
+  "lives"         — player gets multiple lives; collision costs 1 life instead of instant game over. params: { count }
+  "shield"        — a shield power-up (🛡️) spawns periodically; collecting it absorbs 1 hit. params: { duration, shieldInterval }
+  "double-points" — periodic ⚡ 2x score burst intervals appear. params: { multiplier, doubleDuration, doubleInterval }
+  "enemy-explode" — enemies visually burst on collision (works best with lives action). No params needed.
+  "speed-ramp"    — game auto-accelerates over time. params: { increment, maxSpeed }
+Rules: max 3 actions total. Each id must be unique (e.g. "action-lives", "action-stars"). Omit actions for simple games.
+Examples:
+  "knight vs dragons" → "actions": [{"id":"action-lives","type":"lives","name":"3 Lives","description":"You have 3 lives before game over!","emoji":"❤️","params":{"count":3}},{"id":"action-explode","type":"enemy-explode","name":"Dragon Burst","description":"Dragons explode in flames when you collide!","emoji":"💥"}]
+  "star collector"    → "actions": [{"id":"action-stars","type":"collectible","name":"Collect Stars","description":"Stars appear and give bonus points!","emoji":"⭐","params":{"spawnEmoji":"⭐","points":5,"spawnInterval":4000}}]
+  "simple dog game"   → "actions": []`
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
 const CREATE_SYSTEM_PROMPT = `${ASSET_CATALOG_BLOCK}
+${ACTIONS_BLOCK}
 
 You are a fun game design helper for kids. A kid will describe a game idea and you will turn it into a game config.
 
@@ -63,10 +84,12 @@ Respond with ONLY valid JSON, no explanation, no markdown:
   "groundColor": "#5a8a5a",
   "title": "Dog Jump!",
   "speed": 250,
-  "jumpForce": 580
+  "jumpForce": 580,
+  "actions": []
 }`
 
 const UPDATE_SYSTEM_PROMPT = `${ASSET_CATALOG_BLOCK}
+${ACTIONS_BLOCK}
 
 You are a fun game design helper for kids. A kid has an existing game and wants to change something about it.
 
@@ -97,6 +120,15 @@ Other rules:
 - "switch to runner" or "make it side-scroll" → update template to "runner"
 - groundColor: always keep as "#5a8a5a"
 - jumpForce: always keep as 580
+
+Actions rules for updates:
+- "add extra lives" or "give me 3 lives" → add/replace lives action
+- "add collectible stars" or "add coins" → add/replace collectible action with matching emoji
+- "add a shield power-up" → add/replace shield action
+- "make it auto speed up" → add/replace speed-ramp action
+- "remove [action name]" or "remove all actions" → remove matching action(s) from array
+- "add double points" → add/replace double-points action
+- Always preserve actions not mentioned by the kid
 
 Respond with ONLY valid JSON of the complete updated config, no explanation, no markdown.`
 
@@ -138,7 +170,7 @@ export async function generateGameConfig(
         { role: 'user', content: userMessage },
       ],
       temperature: 0.7,
-      max_tokens: 220,
+      max_tokens: 700,
       response_format: { type: 'json_object' },
     })
 
@@ -162,6 +194,16 @@ export async function generateGameConfig(
     if (config.enemySpriteId && !ALL_CHARACTER_IDS.has(config.enemySpriteId)) delete config.enemySpriteId
     if (config.bgId          && !ALL_BG_IDS.has(config.bgId))                 delete config.bgId
 
+    // Validate actions — strip unknown types, enforce max 3, ensure required fields
+    if (Array.isArray(config.actions)) {
+      config.actions = config.actions
+        .filter(a => a && a.id && typeof a.id === 'string' && VALID_ACTION_TYPES.has(a.type))
+        .slice(0, 3)
+      if (config.actions.length === 0) delete config.actions
+    } else {
+      delete config.actions
+    }
+
     // In update mode, fill any missing fields from the current config as safety net
     if (isUpdate) {
       config.heroEmoji = config.heroEmoji || currentConfig.heroEmoji
@@ -173,6 +215,10 @@ export async function generateGameConfig(
       if (config.heroSpriteId  === undefined && currentConfig.heroSpriteId)  config.heroSpriteId  = currentConfig.heroSpriteId
       if (config.enemySpriteId === undefined && currentConfig.enemySpriteId) config.enemySpriteId = currentConfig.enemySpriteId
       if (config.bgId          === undefined && currentConfig.bgId)          config.bgId          = currentConfig.bgId
+      // Preserve actions from current config if AI returned none/undefined
+      if (!config.actions && currentConfig.actions?.length) {
+        config.actions = currentConfig.actions
+      }
     }
 
     return config

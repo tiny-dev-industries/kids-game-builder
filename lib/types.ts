@@ -1,3 +1,37 @@
+export type ActionType =
+  | 'collectible'    // spawn collectible items for bonus points
+  | 'lives'          // multiple lives instead of instant game over
+  | 'shield'         // periodic shield power-up spawns
+  | 'double-points'  // timed score-doubling bonus intervals
+  | 'enemy-explode'  // enemies flash+burst on collision (visual, costs a life)
+  | 'speed-ramp'     // game accelerates automatically over time
+
+export interface GameAction {
+  id: string           // unique — e.g. 'action-lives'
+  type: ActionType
+  name: string         // display name — e.g. "3 Lives"
+  description: string  // short description for UI card
+  emoji: string        // display emoji — e.g. "❤️"
+  params?: {
+    // collectible
+    spawnEmoji?: string       // default '⭐'
+    points?: number           // default 5
+    spawnInterval?: number    // ms, default 4000
+    // lives
+    count?: number            // default 3
+    // shield
+    duration?: number         // ms shield lasts, default 5000
+    shieldInterval?: number   // ms between spawns, default 15000
+    // double-points
+    multiplier?: number       // default 2
+    doubleDuration?: number   // ms, default 5000
+    doubleInterval?: number   // ms between activations, default 20000
+    // speed-ramp
+    increment?: number        // speed added per 10s, default 30
+    maxSpeed?: number         // cap, default SPEED_MAX
+  }
+}
+
 export interface GameConfig {
   template: 'runner' | 'topdown'
   heroEmoji: string
@@ -10,6 +44,7 @@ export interface GameConfig {
   title: string
   speed: number
   jumpForce: number
+  actions?: GameAction[]   // 0–3 AI-defined game-event behaviors
 }
 
 export const SPEED_MIN = 180

@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-03-03
+
+### Added — Milestone 6: Actions System + Chat Targeting
+
+- **Actions system** — AI generates up to 3 game-event behaviors stored in `GameConfig.actions[]`
+  - `collectible` — spawn pickup items (⭐ coins, stars, etc.) that give bonus points; supports runner scroll + topdown stationary pickups
+  - `lives` — multi-life system with ❤️ heart HUD; collision costs 1 life, brief invincibility + hero flash between hits
+  - `shield` — periodic 🛡️ power-up spawns; collecting it absorbs the next hit with a blue bubble visual
+  - `double-points` — timed ⚡ 2× score burst intervals with on-screen banner
+  - `enemy-explode` — enemies tween-scale and fade on collision (visual flair, works best with `lives`)
+  - `speed-ramp` — game auto-accelerates every 10 seconds up to a configurable cap
+- **`ActionSystem`** module in `game.html` — self-contained interpreter used by both RunnerScene and TopDownScene
+  - `init(scene)` — sets up per-action state and builds lives HUD
+  - `tick(scene, time, delta, dt, heroX, heroY)` — returns effective speed; ticks collectibles, shield, double-points, speed-ramp each frame
+  - `handleCollision(scene, hitEnemy)` — returns `true` (game over) or `false` (absorbed by shield/lives); applies enemy-explode tween
+  - `destroy()` — cleans up all action game objects on game over
+- **AI action injection** — action schema + examples appended to both `CREATE_SYSTEM_PROMPT` and `UPDATE_SYSTEM_PROMPT`
+  - Action type validation: unknown types stripped; max 3 actions enforced post-parse
+  - Update mode preserves existing actions when AI returns none
+- **Chat Targeting (🎯)** — click any settings label or action card to pre-fill the chat textarea with contextual prompt
+  - Every `SettingsRow` (Title, Hero, Enemy, Sprites, Background, Speed, Colors) shows a 🎯 button on hover
+  - Clicking switches to Chat tab, pre-fills textarea with relevant context, auto-focuses for immediate typing
+  - Powered by `handleTarget(prefill)` callback + `textareaRef`
+- **`ActionCard` component** — displays action emoji, name, description, and 🎯 targeting button
+- **⚡ Actions section** in Settings panel — shows action cards or "No actions yet" empty-state button that targets the chat
+- **Hint chips** updated — adds `"Add extra lives"` / `"Add collectible stars"` (or `"Add more actions"` if actions exist)
+
+### Changed
+- `GameConfig` — added optional `actions?: GameAction[]` field
+- `lib/types.ts` — new `GameAction` interface + `ActionType` union type
+- `lib/ai.ts` — `max_tokens` raised from 220 → 700 to accommodate actions JSON
+- TopDown score display — switches from "Time: Xs" to "Score: N" when a `collectible` action is active
+
+---
+
 ## [0.5.0] - 2026-03-03
 
 ### Added — Milestone 5: Assets Library + Procedural Sounds

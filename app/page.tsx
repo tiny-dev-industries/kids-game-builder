@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Mic, MicOff, Gamepad2, Sparkles, RefreshCw, MessageSquare, Settings, Code2 } from 'lucide-react'
-import { GameConfig, SPEED_MIN, SPEED_MAX } from '@/lib/types'
+import { GameConfig, GameAction, SPEED_MIN, SPEED_MAX } from '@/lib/types'
 import { HERO_SPRITES, ENEMY_SPRITES, BG_ASSETS, CharacterAsset, BackgroundAsset } from '@/lib/assets'
 
 type AppState = 'idle' | 'listening' | 'thinking' | 'playing'
@@ -17,10 +17,24 @@ interface ChatMessage {
 
 // ── Settings sub-components ────────────────────────────────────────────────
 
-function SettingsRow({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
+function SettingsRow({ icon, label, children, onTarget }: {
+  icon: string
+  label: string
+  children: React.ReactNode
+  onTarget?: () => void
+}) {
   return (
     <div className="bg-gray-750 rounded-xl px-3 py-3 border border-gray-700">
-      <div className="text-xs text-gray-500 mb-1.5">{icon} {label}</div>
+      <div className="flex items-center gap-1 text-xs text-gray-500 mb-1.5">
+        <span>{icon} {label}</span>
+        {onTarget && (
+          <button
+            onClick={onTarget}
+            className="ml-auto text-gray-600 hover:text-blue-400 transition-colors leading-none"
+            title={`Ask AI about ${label}`}
+          >🎯</button>
+        )}
+      </div>
       <div>{children}</div>
     </div>
   )
@@ -193,7 +207,27 @@ function BgPicker({ options, selectedId, onSelect }: {
   )
 }
 
-function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobileTarget, onMobileToggle, preferredTemplate, onTemplatePreferenceChange }: {
+/** Card displaying a single AI-defined game action with an optional 🎯 chat-target button */
+function ActionCard({ action, onTarget }: { action: GameAction; onTarget?: () => void }) {
+  return (
+    <div className="flex items-start gap-2 bg-gray-700/60 rounded-xl p-2.5 border border-gray-600">
+      <span className="text-2xl leading-none mt-0.5 shrink-0">{action.emoji}</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-white">{action.name}</div>
+        <div className="text-xs text-gray-400 leading-snug mt-0.5">{action.description}</div>
+      </div>
+      {onTarget && (
+        <button
+          onClick={onTarget}
+          className="text-gray-600 hover:text-blue-400 text-xs shrink-0 mt-0.5 transition-colors"
+          title="Ask AI about this action"
+        >🎯</button>
+      )}
+    </div>
+  )
+}
+
+function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobileTarget, onMobileToggle, preferredTemplate, onTemplatePreferenceChange, onTarget }: {
   config: GameConfig | null
   onConfigChange: (config: GameConfig) => void
   gameMode: GameMode
@@ -202,6 +236,7 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
   onMobileToggle: () => void
   preferredTemplate: 'runner' | 'topdown'
   onTemplatePreferenceChange: (t: 'runner' | 'topdown') => void
+  onTarget: (prefill: string) => void
 }) {
   // Code game: read-only panel
   if (gameMode === 'code') {
@@ -260,7 +295,7 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
       {/* Template toggle */}
       <TemplateToggle value={config.template} onChange={v => update('template', v)} />
 
-      <SettingsRow icon="📛" label="Title">
+      <SettingsRow icon="📛" label="Title" onTarget={() => onTarget('Change the game title to ')}>
         <input
           type="text"
           value={config.title}
@@ -273,19 +308,19 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
 
       <div className="flex gap-2">
         <div className="flex-1">
-          <SettingsRow icon="🎮" label="Hero">
+          <SettingsRow icon="🎮" label="Hero" onTarget={() => onTarget('Change the hero character to ')}>
             <EmojiInput value={config.heroEmoji} onChange={v => update('heroEmoji', v)} />
           </SettingsRow>
         </div>
         <div className="flex-1">
-          <SettingsRow icon="😈" label="Enemy">
+          <SettingsRow icon="😈" label="Enemy" onTarget={() => onTarget('Change the enemy to ')}>
             <EmojiInput value={config.enemyEmoji} onChange={v => update('enemyEmoji', v)} />
           </SettingsRow>
         </div>
       </div>
 
       {/* Hero sprite picker */}
-      <SettingsRow icon="🧙" label="Hero Sprite">
+      <SettingsRow icon="🧙" label="Hero Sprite" onTarget={() => onTarget(`Change the hero sprite — currently: ${config.heroSpriteId ?? 'emoji only'}`)}>
         <SpritePicker
           options={HERO_SPRITES}
           selectedId={config.heroSpriteId}
@@ -295,7 +330,7 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
       </SettingsRow>
 
       {/* Enemy sprite picker */}
-      <SettingsRow icon="👾" label="Enemy Sprite">
+      <SettingsRow icon="👾" label="Enemy Sprite" onTarget={() => onTarget(`Change the enemy sprite — currently: ${config.enemySpriteId ?? 'emoji only'}`)}>
         <SpritePicker
           options={ENEMY_SPRITES}
           selectedId={config.enemySpriteId}
@@ -305,7 +340,7 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
       </SettingsRow>
 
       {/* Background scene picker */}
-      <SettingsRow icon="🌄" label="Background Scene">
+      <SettingsRow icon="🌄" label="Background Scene" onTarget={() => onTarget(`Change the background — currently: ${config.bgId ?? config.backgroundColor}`)}>
         <BgPicker
           options={BG_ASSETS}
           selectedId={config.bgId}
@@ -313,7 +348,7 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
         />
       </SettingsRow>
 
-      <SettingsRow icon="⚡" label={`${isTopDown ? 'Move Speed' : 'Enemy Speed'} · ${config.speed}`}>
+      <SettingsRow icon="⚡" label={`${isTopDown ? 'Move Speed' : 'Enemy Speed'} · ${config.speed}`} onTarget={() => onTarget(`Make the game ${config.speed > 320 ? 'slower' : 'faster'} — current speed: ${config.speed}`)}>
         <div className="space-y-1.5 pt-0.5">
           <input
             type="range"
@@ -338,15 +373,38 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
         </div>
       </SettingsRow>
 
-      <SettingsRow icon="🎨" label="Background">
+      <SettingsRow icon="🎨" label="Background" onTarget={() => onTarget('Change the background color to ')}>
         <ColorInput hex={config.backgroundColor} onChange={v => update('backgroundColor', v)} />
       </SettingsRow>
 
       {!isTopDown && (
-        <SettingsRow icon="🌿" label="Ground">
+        <SettingsRow icon="🌿" label="Ground" onTarget={() => onTarget('Change the ground color to ')}>
           <ColorInput hex={config.groundColor} onChange={v => update('groundColor', v)} />
         </SettingsRow>
       )}
+
+      {/* ── Actions section ─────────────────────────────────────────────────── */}
+      <div className="mt-1 pt-2 border-t border-gray-700/50">
+        <div className="text-xs text-gray-500 mb-2 px-1">⚡ Actions</div>
+        {(!config.actions || config.actions.length === 0) ? (
+          <button
+            onClick={() => onTarget('Add some fun actions to my game — like collecting stars or having extra lives')}
+            className="w-full text-left text-xs text-gray-500 italic bg-gray-700/40 rounded-xl px-3 py-2.5 border border-dashed border-gray-600 hover:border-blue-500 hover:text-blue-400 transition-colors"
+          >
+            No actions yet — click to ask AI for ideas 💡
+          </button>
+        ) : (
+          <div className="space-y-2">
+            {config.actions.map(action => (
+              <ActionCard
+                key={action.id}
+                action={action}
+                onTarget={() => onTarget(`Modify the "${action.name}" action: `)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       <OutputTargetSection mobileTarget={mobileTarget} onMobileToggle={onMobileToggle} />
     </div>
@@ -421,6 +479,7 @@ export default function Home() {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const recognitionRef = useRef<any>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const isPlaying = gameMode !== null
 
@@ -451,6 +510,13 @@ export default function Home() {
     setCurrentConfig(config)
     sendConfigToGame(config)
   }, [sendConfigToGame])
+
+  // Chat targeting — pre-fill textarea with context and switch to Chat tab
+  const handleTarget = useCallback((prefill: string) => {
+    setPrompt(prefill)
+    setActiveTab('chat')
+    requestAnimationFrame(() => textareaRef.current?.focus())
+  }, [])
 
   const handleGenerate = useCallback(async (text: string) => {
     const trimmed = text.trim()
@@ -590,9 +656,11 @@ export default function Home() {
     }
     if (gameMode === 'config') {
       const isTopDown = currentConfig?.template === 'topdown'
+      const hasActions = (currentConfig?.actions?.length ?? 0) > 0
+      const actionChips = hasActions ? ['Add more actions'] : ['Add extra lives', 'Add collectible stars']
       return isTopDown
-        ? ['Make it faster', 'Make it harder', 'Switch to runner']
-        : ['Make it faster', 'Make it harder', 'Change the hero']
+        ? ['Make it faster', 'Make it harder', 'Switch to runner', ...actionChips]
+        : ['Make it faster', 'Make it harder', 'Change the hero', ...actionChips]
     }
     return []
   })()
@@ -689,6 +757,7 @@ export default function Home() {
             onMobileToggle={() => setMobileTarget(v => !v)}
             preferredTemplate={preferredTemplate}
             onTemplatePreferenceChange={setPreferredTemplate}
+            onTarget={handleTarget}
           />
         ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -790,6 +859,7 @@ export default function Home() {
           )}
 
           <textarea
+            ref={textareaRef}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
