@@ -1,6 +1,29 @@
 @tailwind base;
 @tailwind components;
+
+/* ── Custom utility classes ────────────────────────────────────────────────
+   Placed BEFORE @tailwind utilities so Tailwind responsive variants
+   (e.g. lg:pb-0) can override them at the right breakpoints.
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* Safe-area bottom padding utility (iPhone home indicator) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Bottom nav total height = 56px + iPhone home-indicator safe area */
+.h-nav {
+  height: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Pad content above the fixed bottom nav (left panel, etc.) */
+.mb-nav {
+  padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 @tailwind utilities;
+
+/* ── Global base styles ──────────────────────────────────────────────────── */
 
 * {
   box-sizing: border-box;
@@ -22,19 +45,4 @@ body {
 /* Remove 300ms tap delay on buttons/links */
 button, a, [role="button"] {
   touch-action: manipulation;
-}
-
-/* Safe-area bottom padding utility (iPhone home indicator) */
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-/* Bottom nav height = 56px + safe area */
-.h-nav {
-  height: calc(3.5rem + env(safe-area-inset-bottom, 0px));
-}
-
-/* Push content above the fixed bottom nav */
-.mb-nav {
-  padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
 }

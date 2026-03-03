@@ -710,14 +710,19 @@ export default function Home() {
   })()
 
   return (
-    <div className="flex h-[100dvh] bg-gray-900 overflow-hidden">
-      {/* Left Rail — full-width on mobile, fixed 320px sidebar on desktop (lg+) */}
+    // `relative` is required so absolute-positioned children (mobile layout) anchor here
+    <div className="relative flex h-[100dvh] bg-gray-900 overflow-hidden">
+      {/* ── Left Rail ──────────────────────────────────────────────────────────
+          Mobile : absolute overlay on top of the game (z-10); full-viewport
+                   height, padded at bottom to clear the fixed nav bar.
+          Desktop: normal flex sidebar (w-80) — absolute/inset reset by lg: classes.
+          Visibility: hidden when Game tab is active (game shows through), flex otherwise.
+      ───────────────────────────────────────────────────────────────────────── */}
       <div className={[
-        'bg-gray-800 flex-col border-gray-700',
-        // Desktop: fixed sidebar
-        'lg:flex lg:w-80 lg:border-r lg:pb-0',
-        // Mobile: full-width, push content above fixed bottom nav; shown for chat/settings, hidden for game
-        mobileView === 'game' ? 'hidden' : 'flex w-full mb-nav',
+        'flex-col bg-gray-800 border-gray-700',
+        'absolute inset-0 z-10 mb-nav',
+        'lg:relative lg:inset-auto lg:z-auto lg:pb-0 lg:w-80 lg:border-r',
+        mobileView === 'game' ? 'hidden lg:flex' : 'flex',
       ].join(' ')}>
 
         {/* Header */}
@@ -914,15 +919,14 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Right Rail — game iframe; always visible on desktop, shown only when mobileView=game on mobile.
-          On mobile we add pb-14 so the iframe shrinks to fit above the fixed bottom nav,
-          letting Phaser size its canvas to the actually-visible area. */}
-      <div className={[
-        'relative bg-gray-900',
-        mobileView === 'game'
-          ? 'flex flex-col flex-1 pb-14 lg:pb-0'
-          : 'hidden lg:flex lg:flex-col lg:flex-1',
-      ].join(' ')}>
+      {/* ── Game iframe ────────────────────────────────────────────────────────
+          Mobile : ALWAYS absolute full-screen (z-0, behind left rail overlay).
+                   This ensures Phaser initialises with a real viewport size,
+                   not 0×0 (which happens when the container is display:none).
+                   pb-14 keeps the canvas above the fixed bottom nav bar.
+          Desktop: normal flex-1 item — absolute/inset/pb reset by lg: classes.
+      ───────────────────────────────────────────────────────────────────────── */}
+      <div className="absolute inset-0 z-0 pb-14 bg-gray-900 lg:relative lg:inset-auto lg:pb-0 lg:flex-1 lg:flex lg:flex-col">
         <iframe
           ref={iframeRef}
           src="/game.html"
