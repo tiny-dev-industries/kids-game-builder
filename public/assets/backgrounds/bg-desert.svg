@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe0b2"/>
+      <stop offset="100%" stop-color="#ffcc80"/>
+    </linearGradient>
+    <linearGradient id="sky_d" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff8f00"/>
+      <stop offset="100%" stop-color="#ffcc02"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="140" fill="url(#sky_d)" opacity="0.6"/>
+  <rect width="256" height="256" fill="url(#sand)" opacity="0.5"/>
+  <rect y="140" width="256" height="116" fill="#c8932a"/>
+  <rect y="136" width="256" height="10" fill="#daa520" opacity="0.8"/>
+  <ellipse cx="64" cy="145" rx="80" ry="18" fill="#d4a843" opacity="0.7"/>
+  <ellipse cx="200" cy="148" rx="70" ry="16" fill="#c8932a" opacity="0.6"/>
+  <ellipse cx="128" cy="256" rx="120" ry="30" fill="#b8791a" opacity="0.5"/>
+  <path d="M 0 170 Q 64 160 128 168 Q 192 176 256 166" fill="none" stroke="#b8791a" stroke-width="1.5" opacity="0.5"/>
+  <path d="M 0 200 Q 64 188 128 196 Q 192 204 256 194" fill="none" stroke="#b8791a" stroke-width="1.5" opacity="0.4"/>
+  <rect x="28" y="100" width="8" height="44" rx="3" fill="#2e7d32"/>
+  <rect x="18" y="116" width="12" height="7" rx="2" fill="#2e7d32"/>
+  <rect x="36" y="110" width="12" height="7" rx="2" fill="#2e7d32"/>
+  <rect x="200" y="95" width="10" height="50" rx="3" fill="#388e3c"/>
+  <rect x="188" y="112" width="14" height="7" rx="2" fill="#388e3c"/>
+  <rect x="208" y="108" width="14" height="7" rx="2" fill="#388e3c"/>
+  <circle cx="220" cy="30" r="24" fill="#ffeb3b" opacity="0.9"/>
+  <circle cx="220" cy="30" r="18" fill="#fff176" opacity="0.7"/>
+  <circle cx="128" cy="155" r="8" fill="#f5f5dc" opacity="0.6"/>
+  <circle cx="125" cy="153" r="2.5" fill="#333" opacity="0.7"/>
+  <circle cx="131" cy="153" r="2.5" fill="#333" opacity="0.7"/>
+  <rect x="124" y="158" width="8" height="3" rx="1" fill="#333" opacity="0.5"/>
+</svg>

@@ -54,12 +54,47 @@
       };
     }
 
+    // ── Procedural Web Audio sounds ───────────────────────────────────────────
+    // Our own AudioContext — completely separate from Phaser's audio system.
+    function createSounds() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        function tone(freq, dur, type, vol) {
+          type = type || 'sine'; vol = vol || 0.22;
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = type;
+          o.frequency.value = freq;
+          g.gain.setValueAtTime(vol, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(); o.stop(ctx.currentTime + dur);
+        }
+        return {
+          // Rising chirp: short + crisp
+          jump()     { tone(300, 0.04); setTimeout(function(){ tone(520, 0.07); }, 40); },
+          // Soft thud on landing
+          land()     { tone(130, 0.07, 'triangle', 0.16); },
+          // Sad descending tones
+          gameOver() {
+            [400, 300, 180].forEach(function(f, i) {
+              setTimeout(function(){ tone(f, 0.14, 'sawtooth', 0.14); }, i * 130);
+            });
+          },
+          // Coin-style ding
+          score()    { tone(523, 0.05); setTimeout(function(){ tone(784, 0.09); }, 60); },
+        };
+      } catch (e) {
+        // Web Audio unavailable — return no-op object
+        return { jump: function(){}, land: function(){}, gameOver: function(){}, score: function(){} };
+      }
+    }
+
     // ── Dispatch on template ──────────────────────────────────────────────────
     function startGame(config) {
       currentConfig = config;
 
       // Hide placeholder
-      const placeholder = document.getElementById('placeholder');
+      var placeholder = document.getElementById('placeholder');
       if (placeholder) placeholder.style.display = 'none';
 
       // Destroy existing game
@@ -76,13 +111,20 @@
     //  RUNNER TEMPLATE (side-scroller — hero jumps over enemies)
     // ══════════════════════════════════════════════════════════════════════════
     function startRunnerGame(config) {
-      const W = window.innerWidth;
-      const H = window.innerHeight;
-      const GROUND_Y = H * 0.78;
-      const GROUND_HEIGHT = H - GROUND_Y;
+      var W = window.innerWidth;
+      var H = window.innerHeight;
+      var GROUND_Y = H * 0.78;
+      var GROUND_HEIGHT = H - GROUND_Y;
 
       class RunnerScene extends Phaser.Scene {
         constructor() { super({ key: 'RunnerScene' }); }
+
+        // ── Preload sprites when catalog IDs are set ──────────────────────────
+        preload() {
+          if (config.heroSpriteId)  this.load.image('hero-spr',  '/assets/characters/' + config.heroSpriteId  + '.svg');
+          if (config.enemySpriteId) this.load.image('enemy-spr', '/assets/characters/' + config.enemySpriteId + '.svg');
+          if (config.bgId)          this.load.image('bg-tile',   '/assets/backgrounds/' + config.bgId         + '.svg');
+        }
 
         create() {
           this.gameOver = false;
@@ -90,19 +132,25 @@
           this.spawnTimer = 0;
           this.spawnInterval = 2200;
           this.lastTime = 0;
+          this.sounds = createSounds();
 
-          // Background
-          this.cameras.main.setBackgroundColor(config.backgroundColor || '#87CEEB');
+          // ── Background ───────────────────────────────────────────────────────
+          var hasBgTile = config.bgId && this.textures.exists('bg-tile');
+          if (hasBgTile) {
+            this.bgTile = this.add.tileSprite(0, 0, W, H, 'bg-tile').setOrigin(0).setDepth(-2);
+          } else {
+            this.cameras.main.setBackgroundColor(config.backgroundColor || '#87CEEB');
+          }
 
-          // Clouds (decorative)
+          // Clouds (decorative — shown even with bg tiles for parallax feel)
           this.clouds = [];
-          for (let i = 0; i < 4; i++) {
-            const cloud = this.add.text(
+          for (var i = 0; i < 4; i++) {
+            var cloud = this.add.text(
               Phaser.Math.Between(0, W),
               Phaser.Math.Between(30, GROUND_Y * 0.4),
               '☁️',
               { fontSize: Phaser.Math.Between(28, 52) + 'px' }
-            );
+            ).setDepth(-1);
             cloud.speed = Phaser.Math.Between(20, 50);
             this.clouds.push(cloud);
           }
@@ -111,16 +159,25 @@
           this.add.rectangle(W / 2, GROUND_Y + GROUND_HEIGHT / 2, W, GROUND_HEIGHT, 0x5a8a5a);
           this.add.rectangle(W / 2, GROUND_Y + 2, W, 4, 0x3d6b3d);
 
-          // Hero
-          this.hero = this.add.text(120, GROUND_Y - 10, config.heroEmoji, {
-            fontSize: '52px'
-          }).setOrigin(0.5, 1);
+          // ── Hero (sprite or emoji) ────────────────────────────────────────────
+          var useHeroSpr = config.heroSpriteId && this.textures.exists('hero-spr');
+          if (useHeroSpr) {
+            this.hero = this.add.image(120, GROUND_Y - 16, 'hero-spr')
+              .setDisplaySize(52, 52).setOrigin(0.5, 1);
+          } else {
+            this.hero = this.add.text(120, GROUND_Y - 10, config.heroEmoji, {
+              fontSize: '52px', fontFamily: 'Arial'
+            }).setOrigin(0.5, 1);
+          }
+          this.useHeroSpr = useHeroSpr;
 
           this.heroVelocityY = 0;
           this.isJumping = false;
+          this.wasJumping = false;
           this.jumpForce = config.jumpForce || 580;
           this.gravity = 1400;
           this.enemies = [];
+          this.useEnemySpr = config.enemySpriteId && this.textures.exists('enemy-spr');
 
           // Score + title text
           this.scoreTxt = this.add.text(W - 20, 20, 'Score: 0', {
@@ -148,26 +205,32 @@
         doJump() {
           if (this.gameOver) { this.scene.restart(); return; }
           if (!this.isJumping) {
-            this.heroVelocityY = -this.jumpForce;
+            this.heroVelocityY = -(this.jumpForce);
             this.isJumping = true;
+            this.sounds.jump();
           }
         }
 
         update(time, delta) {
           if (this.gameOver) return;
-          const dt = delta / 1000;
-          const groundY = GROUND_Y;
-          const speed = config.speed || 250;
+          var dt = delta / 1000;
+          var groundY = GROUND_Y;
+          var speed = config.speed || 250;
+
+          // Scroll background tile (parallax)
+          if (this.bgTile) this.bgTile.tilePositionX += speed * 0.3 * dt;
 
           // Clouds
-          this.clouds.forEach(c => { c.x -= c.speed * dt; if (c.x < -80) c.x = W + 80; });
+          this.clouds.forEach(function(c) { c.x -= c.speed * dt; if (c.x < -80) c.x = W + 80; });
 
           // Hero physics
+          this.wasJumping = this.isJumping;
           this.heroVelocityY += this.gravity * dt;
           this.hero.y += this.heroVelocityY * dt;
           if (this.hero.y >= groundY - 10) {
             this.hero.y = groundY - 10;
             this.heroVelocityY = 0;
+            if (this.wasJumping) this.sounds.land();
             this.isJumping = false;
           }
 
@@ -176,25 +239,32 @@
           if (this.spawnTimer >= this.spawnInterval) {
             this.spawnTimer = 0;
             this.spawnInterval = Phaser.Math.Between(1500, 2800);
-            const enemy = this.add.text(W + 40, groundY - 10, config.enemyEmoji, {
-              fontSize: '48px'
-            }).setOrigin(0.5, 1);
+            var enemy;
+            if (this.useEnemySpr) {
+              enemy = this.add.image(W + 40, groundY - 16, 'enemy-spr')
+                .setDisplaySize(48, 48).setOrigin(0.5, 1);
+            } else {
+              enemy = this.add.text(W + 40, groundY - 10, config.enemyEmoji, {
+                fontSize: '48px', fontFamily: 'Arial'
+              }).setOrigin(0.5, 1);
+            }
             enemy.velocityX = -(speed + Phaser.Math.Between(0, 60));
             this.enemies.push(enemy);
           }
 
           // Move enemies + collision
-          const heroBox = { x: this.hero.x - 18, y: this.hero.y - 44, w: 36, h: 44 };
-          for (let i = this.enemies.length - 1; i >= 0; i--) {
-            const e = this.enemies[i];
+          var heroBox = { x: this.hero.x - 18, y: this.hero.y - 44, w: 36, h: 44 };
+          for (var i = this.enemies.length - 1; i >= 0; i--) {
+            var e = this.enemies[i];
             e.x += e.velocityX * dt;
             if (e.x < -60) {
               e.destroy(); this.enemies.splice(i, 1);
               this.score++;
               this.scoreTxt.setText('Score: ' + this.score);
+              if (this.score % 10 === 0) this.sounds.score();
               continue;
             }
-            const eBox = { x: e.x - 16, y: e.y - 40, w: 32, h: 40 };
+            var eBox = { x: e.x - 16, y: e.y - 40, w: 32, h: 40 };
             if (heroBox.x < eBox.x + eBox.w && heroBox.x + heroBox.w > eBox.x &&
                 heroBox.y < eBox.y + eBox.h && heroBox.y + heroBox.h > eBox.y) {
               this.triggerGameOver(); return;
@@ -204,8 +274,14 @@
 
         triggerGameOver() {
           this.gameOver = true;
-          this.hero.setText('💥');
-          const W2 = window.innerWidth, H2 = window.innerHeight;
+          this.sounds.gameOver();
+          if (this.useHeroSpr) {
+            // Tint the sprite red on game over
+            this.hero.setTint(0xff4444);
+          } else {
+            this.hero.setText('💥');
+          }
+          var W2 = window.innerWidth, H2 = window.innerHeight;
           this.add.rectangle(W2 / 2, H2 / 2, 360, 200, 0x000000, 0.75).setDepth(20);
           this.add.text(W2 / 2, H2 / 2 - 50, '💀 Game Over!', {
             fontSize: '36px', color: '#ff4444', stroke: '#000', strokeThickness: 4,
@@ -229,28 +305,48 @@
       class TopDownScene extends Phaser.Scene {
         constructor() { super({ key: 'TopDownScene' }); }
 
+        // ── Preload sprites when catalog IDs are set ──────────────────────────
+        preload() {
+          if (config.heroSpriteId)  this.load.image('hero-spr',  '/assets/characters/' + config.heroSpriteId  + '.svg');
+          if (config.enemySpriteId) this.load.image('enemy-spr', '/assets/characters/' + config.enemySpriteId + '.svg');
+          if (config.bgId)          this.load.image('bg-tile',   '/assets/backgrounds/' + config.bgId         + '.svg');
+        }
+
         create() {
-          const W = this.cameras.main.width;
-          const H = this.cameras.main.height;
+          var W = this.cameras.main.width;
+          var H = this.cameras.main.height;
 
           this.W = W; this.H = H;
           this.heroX = W / 2;
           this.heroY = H / 2;
-          this.enemies = [];       // {x, y, txt}
+          this.enemies = [];       // {x, y, obj}
           this.score = 0;
           this.isGameOver = false;
           this.lastSpawn = 0;
           this.pointerTarget = null; // {x, y} for touch movement
+          this.sounds = createSounds();
 
-          // Background color set in Phaser config; add a subtle arena border
-          const borderAlpha = 0.25;
-          this.add.rectangle(W / 2, H / 2, W - 8, H - 8, 0xffffff, borderAlpha)
-            .setStrokeStyle(3, 0xffffff, 0.4);
+          // ── Background ───────────────────────────────────────────────────────
+          if (config.bgId && this.textures.exists('bg-tile')) {
+            this.add.tileSprite(W / 2, H / 2, W, H, 'bg-tile').setOrigin(0.5).setDepth(-2);
+          }
 
-          // Hero
-          this.heroTxt = this.add.text(this.heroX, this.heroY, config.heroEmoji, {
-            fontSize: '52px', fontFamily: 'Arial'
-          }).setOrigin(0.5);
+          // Arena border (semi-transparent overlay so it shows above any bg tile)
+          this.add.rectangle(W / 2, H / 2, W - 8, H - 8, 0xffffff, 0)
+            .setStrokeStyle(3, 0xffffff, 0.35).setDepth(0);
+
+          // ── Hero (sprite or emoji) ────────────────────────────────────────────
+          var useHeroSpr = config.heroSpriteId && this.textures.exists('hero-spr');
+          if (useHeroSpr) {
+            this.heroObj = this.add.image(this.heroX, this.heroY, 'hero-spr')
+              .setDisplaySize(52, 52).setOrigin(0.5).setDepth(2);
+          } else {
+            this.heroObj = this.add.text(this.heroX, this.heroY, config.heroEmoji, {
+              fontSize: '52px', fontFamily: 'Arial'
+            }).setOrigin(0.5).setDepth(2);
+          }
+          this.useHeroSpr = useHeroSpr;
+          this.useEnemySpr = config.enemySpriteId && this.textures.exists('enemy-spr');
 
           // Score + title
           this.scoreTxt = this.add.text(W - 20, 20, 'Time: 0s', {
@@ -273,7 +369,7 @@
           this.input.on('pointerup', () => { this.pointerTarget = null; });
 
           // Start hint
-          const hint = this.add.text(W / 2, H * 0.88, 'Arrow keys / WASD or tap to move!', {
+          var hint = this.add.text(W / 2, H * 0.88, 'Arrow keys / WASD or tap to move!', {
             fontSize: '22px', color: '#fff', stroke: '#000', strokeThickness: 4,
             backgroundColor: '#0008', padding: { x: 14, y: 6 },
           }).setOrigin(0.5).setDepth(10);
@@ -282,12 +378,12 @@
 
         update(time, delta) {
           if (this.isGameOver) return;
-          const dt = delta / 1000;
-          const speed = config.speed || 250;
-          const W = this.W, H = this.H;
+          var dt = delta / 1000;
+          var speed = config.speed || 250;
+          var W = this.W, H = this.H;
 
-          // ── Hero movement ────────────────────────────────────────────────
-          let vx = 0, vy = 0;
+          // ── Hero movement ─────────────────────────────────────────────────────
+          var vx = 0, vy = 0;
 
           if (this.cursors.left.isDown  || this.wasd.A.isDown) vx = -1;
           if (this.cursors.right.isDown || this.wasd.D.isDown) vx =  1;
@@ -296,9 +392,9 @@
 
           // Touch: move toward held pointer point
           if (vx === 0 && vy === 0 && this.pointerTarget) {
-            const dx = this.pointerTarget.x - this.heroX;
-            const dy = this.pointerTarget.y - this.heroY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            var dx = this.pointerTarget.x - this.heroX;
+            var dy = this.pointerTarget.y - this.heroY;
+            var dist = Math.sqrt(dx * dx + dy * dy);
             if (dist > 8) { vx = dx / dist; vy = dy / dist; }
           }
 
@@ -307,58 +403,72 @@
 
           this.heroX = Math.max(32, Math.min(W - 32, this.heroX + vx * speed * dt));
           this.heroY = Math.max(32, Math.min(H - 32, this.heroY + vy * speed * dt));
-          this.heroTxt.setPosition(this.heroX, this.heroY);
+          this.heroObj.setPosition(this.heroX, this.heroY);
 
-          // ── Spawn enemies ────────────────────────────────────────────────
-          const elapsed = Math.floor(time / 1000);   // seconds survived so far
-          const spawnInterval = Math.max(600, 2200 - elapsed * 80);
+          // ── Spawn enemies ─────────────────────────────────────────────────────
+          var elapsed = Math.floor(time / 1000);
+          var spawnInterval = Math.max(600, 2200 - elapsed * 80);
           if (time - this.lastSpawn > spawnInterval) {
             this.spawnEnemy(); this.lastSpawn = time;
           }
 
-          // ── Move enemies + collision ─────────────────────────────────────
-          for (let i = this.enemies.length - 1; i >= 0; i--) {
-            const e = this.enemies[i];
-            const dx = this.heroX - e.x;
-            const dy = this.heroY - e.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+          // ── Move enemies + collision ──────────────────────────────────────────
+          for (var i = this.enemies.length - 1; i >= 0; i--) {
+            var e = this.enemies[i];
+            var ex = this.heroX - e.x;
+            var ey = this.heroY - e.y;
+            var edist = Math.sqrt(ex * ex + ey * ey);
 
-            // Circle collision (radius ~32 for both emoji)
-            if (dist < 34) { this.triggerGameOver(); return; }
+            if (edist < 34) { this.triggerGameOver(); return; }
 
-            if (dist > 0) {
-              e.x += (dx / dist) * speed * 0.7 * dt;
-              e.y += (dy / dist) * speed * 0.7 * dt;
-              e.txt.setPosition(e.x, e.y);
+            if (edist > 0) {
+              e.x += (ex / edist) * speed * 0.7 * dt;
+              e.y += (ey / edist) * speed * 0.7 * dt;
+              e.obj.setPosition(e.x, e.y);
             }
           }
 
-          // ── Score (time survived) ────────────────────────────────────────
+          // ── Score (time survived) ─────────────────────────────────────────────
           this.score = elapsed;
           this.scoreTxt.setText('Time: ' + this.score + 's');
+          // Ding every 5 seconds
+          if (elapsed > 0 && elapsed % 5 === 0 && elapsed !== this.lastScoreSnd) {
+            this.lastScoreSnd = elapsed;
+            this.sounds.score();
+          }
         }
 
         spawnEnemy() {
-          const W = this.W, H = this.H;
-          let x, y;
-          const side = Phaser.Math.Between(0, 3);
-          if (side === 0) { x = Phaser.Math.Between(0, W); y = -40; }
+          var W = this.W, H = this.H;
+          var x, y;
+          var side = Phaser.Math.Between(0, 3);
+          if (side === 0)      { x = Phaser.Math.Between(0, W); y = -40; }
           else if (side === 1) { x = W + 40; y = Phaser.Math.Between(0, H); }
           else if (side === 2) { x = Phaser.Math.Between(0, W); y = H + 40; }
           else                 { x = -40; y = Phaser.Math.Between(0, H); }
 
-          const txt = this.add.text(x, y, config.enemyEmoji, {
-            fontSize: '44px', fontFamily: 'Arial'
-          }).setOrigin(0.5);
-          this.enemies.push({ x, y, txt });
+          var obj;
+          if (this.useEnemySpr) {
+            obj = this.add.image(x, y, 'enemy-spr').setDisplaySize(44, 44).setOrigin(0.5).setDepth(2);
+          } else {
+            obj = this.add.text(x, y, config.enemyEmoji, {
+              fontSize: '44px', fontFamily: 'Arial'
+            }).setOrigin(0.5).setDepth(2);
+          }
+          this.enemies.push({ x, y, obj });
         }
 
         triggerGameOver() {
           this.isGameOver = true;
-          this.heroTxt.setText('💥');
+          this.sounds.gameOver();
+          if (this.useHeroSpr) {
+            this.heroObj.setTint(0xff4444);
+          } else {
+            this.heroObj.setText('💥');
+          }
 
-          const W = this.W, H = this.H;
-          const cx = W / 2, cy = H / 2;
+          var W = this.W, H = this.H;
+          var cx = W / 2, cy = H / 2;
 
           this.add.rectangle(cx, cy, 380, 210, 0x000000, 0.78).setDepth(20);
           this.add.text(cx, cy - 58, '💀 Game Over!', {

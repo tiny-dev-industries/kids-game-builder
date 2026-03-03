@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-03
+
+### Added — Milestone 5: Assets Library + Procedural Sounds
+
+- **SVG sprite library** — 10 custom-illustrated character sprites + 5 tileable background scenes
+  - Hero sprites: Knight, Robot, Cat, Wizard, Astronaut
+  - Enemy sprites: Dragon, Ghost, Bat, Alien, Slime
+  - Background tiles: Blue Sky, Starfield, Dungeon, Forest, Desert (all 256×256 SVG, tileable)
+  - Stored in `/public/assets/characters/` and `/public/assets/backgrounds/`
+- **AI sprite selection** — catalog summary injected into both `CREATE_SYSTEM_PROMPT` and `UPDATE_SYSTEM_PROMPT`
+  - AI picks `heroSpriteId`, `enemySpriteId`, `bgId` from the catalog when a good thematic match exists
+  - Sprite IDs validated after generation; unknown IDs stripped to prevent hallucination
+  - Emoji still required as fallback — sprite fields are always optional
+- **`lib/assets.ts`** — single source of truth for the asset catalog
+  - Exports `HERO_SPRITES`, `ENEMY_SPRITES`, `BG_ASSETS` arrays with id/name/tags/url/fallbackColor
+  - `getCatalogSummary()` generates the AI prompt block
+  - `ALL_CHARACTER_IDS` / `ALL_BG_IDS` sets for O(1) validation
+- **Phaser `preload()` in both templates** — sprites load before `create()` runs
+  - `this.load.image()` called for hero/enemy/bg when catalog IDs are set
+  - `this.textures.exists()` check in `create()` — falls back to emoji text if load failed
+  - Background: `tileSprite` for scrolling parallax (runner) or tiled arena floor (topdown)
+  - Hero/enemy: `this.add.image().setDisplaySize(52, 52)` with correct origin
+  - Game over: sprite tinted red (`setTint(0xff4444)`) instead of replaced with 💥
+- **Visual asset picker in Settings panel**
+  - `SpritePicker` component — horizontal grid of 48×48 thumbnails + "Auto" chip (reverts to emoji)
+  - `BgPicker` component — background tiles at 56×40 with fallback color fill
+  - Knight/Dragon/Dungeon (etc.) correctly pre-selected after AI generation
+  - Clicking any option instantly reloads the game via `sendConfigToGame`
+- **Procedural Web Audio sounds** via independent `AudioContext` (separate from Phaser's audio)
+  - `createSounds()` helper returns `{ jump, land, gameOver, score }` no-ops gracefully if unavailable
+  - jump: rising double chirp (300→520 Hz); land: soft triangle thud; gameOver: sad 3-note descent; score: coin ding
+  - Runner: jump on SPACE/tap, land when touching ground, score every 10 enemies dodged, game over
+  - Top-down: score ding every 5 seconds survived, game over
+- **`GameConfig` extended** with optional `heroSpriteId?`, `enemySpriteId?`, `bgId?: string`
+  - Update mode preserves sprite IDs unless explicitly changed by the AI
+
 ## [0.4.0] - 2026-03-02
 
 ### Added — Milestone 4: Second Game Template + Output Target Settings

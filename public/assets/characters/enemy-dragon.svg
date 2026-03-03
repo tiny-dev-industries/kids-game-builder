@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Dragon: red/orange scary dragon head -->
+  <polygon points="8,20 2,4 20,16" fill="#8B0000" opacity="0.8"/>
+  <polygon points="56,20 62,4 44,16" fill="#8B0000" opacity="0.8"/>
+  <ellipse cx="32" cy="54" rx="12" ry="14" fill="#cc2200"/>
+  <ellipse cx="32" cy="32" rx="20" ry="18" fill="#dd3300"/>
+  <polygon points="22,16 18,4 26,14" fill="#8B0000"/>
+  <polygon points="42,16 46,4 38,14" fill="#8B0000"/>
+  <ellipse cx="24" cy="28" rx="6" ry="5" fill="#ff8c00"/>
+  <ellipse cx="40" cy="28" rx="6" ry="5" fill="#ff8c00"/>
+  <ellipse cx="24" cy="29" rx="3" ry="4" fill="#111"/>
+  <ellipse cx="40" cy="29" rx="3" ry="4" fill="#111"/>
+  <circle cx="23" cy="27" r="1.2" fill="#fff" opacity="0.6"/>
+  <circle cx="39" cy="27" r="1.2" fill="#fff" opacity="0.6"/>
+  <ellipse cx="32" cy="42" rx="10" ry="7" fill="#cc2200"/>
+  <circle cx="28" cy="41" r="2" fill="#8B0000"/>
+  <circle cx="36" cy="41" r="2" fill="#8B0000"/>
+  <path d="M 22 45 Q 32 52 42 45" fill="#8B0000"/>
+  <polygon points="26,47 28,52 30,47" fill="#fff"/>
+  <polygon points="32,48 34,54 36,48" fill="#fff"/>
+  <polygon points="38,47 40,52 42,47" fill="#fff"/>
+  <ellipse cx="32" cy="58" rx="8" ry="6" fill="#ff6600" opacity="0.8"/>
+  <ellipse cx="32" cy="60" rx="4" ry="4" fill="#ffff00" opacity="0.7"/>
+</svg>

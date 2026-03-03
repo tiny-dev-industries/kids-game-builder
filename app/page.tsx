@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Mic, MicOff, Gamepad2, Sparkles, RefreshCw, MessageSquare, Settings, Code2 } from 'lucide-react'
 import { GameConfig, SPEED_MIN, SPEED_MAX } from '@/lib/types'
+import { HERO_SPRITES, ENEMY_SPRITES, BG_ASSETS, CharacterAsset, BackgroundAsset } from '@/lib/assets'
 
 type AppState = 'idle' | 'listening' | 'thinking' | 'playing'
 type ActiveTab = 'chat' | 'settings'
@@ -82,6 +83,112 @@ function TemplateToggle({ value, onChange }: {
       >
         ⬆️ Top-Down
       </button>
+    </div>
+  )
+}
+
+// ── Asset picker components ────────────────────────────────────────────────
+
+/** Horizontal row of sprite thumbnails + an "Auto" chip that clears the selection */
+function SpritePicker({ options, selectedId, onSelect, fallbackEmoji }: {
+  options: CharacterAsset[]
+  selectedId?: string
+  onSelect: (id: string | undefined) => void
+  fallbackEmoji?: string
+}) {
+  return (
+    <div className="flex gap-1.5 flex-wrap">
+      {/* Auto chip — reverts to emoji rendering */}
+      <button
+        onClick={() => onSelect(undefined)}
+        title="Use emoji (auto)"
+        className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg border text-xs font-medium transition-all ${
+          !selectedId
+            ? 'bg-gray-900 border-blue-400 text-blue-300 ring-1 ring-blue-400'
+            : 'bg-gray-700 border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300'
+        }`}
+      >
+        {fallbackEmoji ? <span className="text-xl leading-none">{fallbackEmoji}</span> : null}
+        <span className="text-[10px] mt-0.5">Auto</span>
+      </button>
+
+      {/* Sprite options */}
+      {options.map(asset => (
+        <button
+          key={asset.id}
+          onClick={() => onSelect(asset.id)}
+          title={asset.name}
+          className={`relative flex flex-col items-center justify-end w-12 h-12 rounded-lg border transition-all overflow-hidden bg-gray-800 ${
+            selectedId === asset.id
+              ? 'border-blue-400 ring-2 ring-blue-400/60'
+              : 'border-gray-600 hover:border-gray-400'
+          }`}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={asset.url}
+            alt={asset.name}
+            className="w-8 h-8 object-contain"
+            style={{ imageRendering: 'pixelated' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0' }}
+          />
+          <span className="text-[9px] text-gray-400 leading-tight truncate w-full text-center px-0.5 pb-0.5">
+            {asset.name}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Horizontal row of background tile thumbnails + a "Color" chip for solid-color mode */
+function BgPicker({ options, selectedId, onSelect }: {
+  options: BackgroundAsset[]
+  selectedId?: string
+  onSelect: (id: string | undefined) => void
+}) {
+  return (
+    <div className="flex gap-1.5 flex-wrap">
+      {/* Color chip — clears bgId, falls back to backgroundColor picker */}
+      <button
+        onClick={() => onSelect(undefined)}
+        title="Use background color"
+        className={`flex flex-col items-center justify-center w-14 h-10 rounded-lg border text-xs transition-all ${
+          !selectedId
+            ? 'bg-gray-900 border-blue-400 text-blue-300 ring-1 ring-blue-400'
+            : 'bg-gray-700 border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300'
+        }`}
+      >
+        <span>🎨</span>
+        <span className="text-[10px] mt-0.5">Color</span>
+      </button>
+
+      {/* Background tiles */}
+      {options.map(bg => (
+        <button
+          key={bg.id}
+          onClick={() => onSelect(bg.id)}
+          title={bg.name}
+          className={`relative flex items-end w-14 h-10 rounded-lg border overflow-hidden transition-all ${
+            selectedId === bg.id
+              ? 'border-blue-400 ring-2 ring-blue-400/60'
+              : 'border-gray-600 hover:border-gray-400'
+          }`}
+          style={{ backgroundColor: bg.fallbackColor }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={bg.url}
+            alt={bg.name}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ imageRendering: 'pixelated' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+          />
+          <span className="relative z-10 text-[9px] text-white px-1 pb-0.5 bg-black/50 w-full truncate leading-tight">
+            {bg.name}
+          </span>
+        </button>
+      ))}
     </div>
   )
 }
@@ -176,6 +283,35 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
           </SettingsRow>
         </div>
       </div>
+
+      {/* Hero sprite picker */}
+      <SettingsRow icon="🧙" label="Hero Sprite">
+        <SpritePicker
+          options={HERO_SPRITES}
+          selectedId={config.heroSpriteId}
+          fallbackEmoji={config.heroEmoji}
+          onSelect={id => update('heroSpriteId', id)}
+        />
+      </SettingsRow>
+
+      {/* Enemy sprite picker */}
+      <SettingsRow icon="👾" label="Enemy Sprite">
+        <SpritePicker
+          options={ENEMY_SPRITES}
+          selectedId={config.enemySpriteId}
+          fallbackEmoji={config.enemyEmoji}
+          onSelect={id => update('enemySpriteId', id)}
+        />
+      </SettingsRow>
+
+      {/* Background scene picker */}
+      <SettingsRow icon="🌄" label="Background Scene">
+        <BgPicker
+          options={BG_ASSETS}
+          selectedId={config.bgId}
+          onSelect={id => update('bgId', id)}
+        />
+      </SettingsRow>
 
       <SettingsRow icon="⚡" label={`${isTopDown ? 'Move Speed' : 'Enemy Speed'} · ${config.speed}`}>
         <div className="space-y-1.5 pt-0.5">

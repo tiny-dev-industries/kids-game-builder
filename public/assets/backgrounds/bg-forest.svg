@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="sky_f" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4fc3f7"/>
+      <stop offset="60%" stop-color="#a5d6a7"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4caf50"/>
+      <stop offset="100%" stop-color="#2e7d32"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" fill="url(#sky_f)"/>
+  <rect y="180" width="256" height="76" fill="url(#ground)"/>
+  <rect y="178" width="256" height="6" fill="#66bb6a"/>
+  <polygon points="20,180 50,80 80,180" fill="#2e7d32" opacity="0.7"/>
+  <polygon points="50,180 75,90 100,180" fill="#388e3c" opacity="0.8"/>
+  <polygon points="160,180 190,75 220,180" fill="#2e7d32" opacity="0.7"/>
+  <polygon points="190,180 215,85 240,180" fill="#388e3c" opacity="0.8"/>
+  <rect x="47" y="165" width="8" height="18" rx="2" fill="#5d4037" opacity="0.7"/>
+  <rect x="187" y="162" width="8" height="20" rx="2" fill="#5d4037" opacity="0.7"/>
+  <polygon points="100,185 140,60 180,185" fill="#388e3c"/>
+  <polygon points="100,185 140,85 180,185" fill="#4caf50"/>
+  <rect x="135" y="172" width="10" height="16" rx="2" fill="#4e342e"/>
+  <ellipse cx="30" cy="182" rx="25" ry="12" fill="#4caf50" opacity="0.8"/>
+  <ellipse cx="220" cy="183" rx="25" ry="12" fill="#4caf50" opacity="0.8"/>
+  <circle cx="80" cy="180" r="4" fill="#ffeb3b"/>
+  <circle cx="110" cy="182" r="3" fill="#ff80ab"/>
+  <circle cx="170" cy="181" r="4" fill="#ffeb3b"/>
+  <circle cx="200" cy="180" r="3" fill="#ff80ab"/>
+  <path d="M 60 50 Q 65 46 70 50" fill="none" stroke="#333" stroke-width="1.5"/>
+  <path d="M 185 40 Q 190 36 195 40" fill="none" stroke="#333" stroke-width="1.5"/>
+</svg>

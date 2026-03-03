@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Bat: dark bat with spread wings -->
+  <path d="M 32 28 Q 20 20 6 10 Q 12 24 14 36 Q 20 32 32 34 Z" fill="#1a0a2e"/>
+  <path d="M 32 28 Q 44 20 58 10 Q 52 24 50 36 Q 44 32 32 34 Z" fill="#1a0a2e"/>
+  <path d="M 32 28 Q 22 22 8 12" fill="none" stroke="#2d1a4a" stroke-width="1.5" opacity="0.6"/>
+  <path d="M 32 28 Q 42 22 56 12" fill="none" stroke="#2d1a4a" stroke-width="1.5" opacity="0.6"/>
+  <ellipse cx="32" cy="32" rx="10" ry="12" fill="#2d1a4a"/>
+  <circle cx="32" cy="24" r="9" fill="#2d1a4a"/>
+  <polygon points="24,20 20,10 28,18" fill="#2d1a4a"/>
+  <polygon points="40,20 44,10 36,18" fill="#2d1a4a"/>
+  <polygon points="25,19 22,12 28,17" fill="#8B0000" opacity="0.7"/>
+  <polygon points="39,19 42,12 36,17" fill="#8B0000" opacity="0.7"/>
+  <circle cx="28" cy="24" r="3.5" fill="#ff0000"/>
+  <circle cx="36" cy="24" r="3.5" fill="#ff0000"/>
+  <circle cx="28" cy="24" r="2" fill="#cc0000"/>
+  <circle cx="36" cy="24" r="2" fill="#cc0000"/>
+  <circle cx="27" cy="23" r="1" fill="#ff6666" opacity="0.6"/>
+  <circle cx="35" cy="23" r="1" fill="#ff6666" opacity="0.6"/>
+  <polygon points="29,32 27,38 31,32" fill="#fff"/>
+  <polygon points="35,32 33,38 37,32" fill="#fff"/>
+</svg>

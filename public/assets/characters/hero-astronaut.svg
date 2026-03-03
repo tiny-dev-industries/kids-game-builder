@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Astronaut: white space suit, gold visor -->
+  <rect x="10" y="32" width="10" height="18" rx="2" fill="#ccc" stroke="#aaa" stroke-width="1"/>
+  <rect x="18" y="30" width="28" height="24" rx="6" fill="#e8e8e8" stroke="#ccc" stroke-width="1.5"/>
+  <circle cx="32" cy="24" r="16" fill="#e8e8e8" stroke="#ccc" stroke-width="1.5"/>
+  <ellipse cx="32" cy="23" rx="10" ry="9" fill="#ffc107" opacity="0.9"/>
+  <ellipse cx="32" cy="23" rx="8" ry="7" fill="#ff8f00" opacity="0.7"/>
+  <ellipse cx="28" cy="20" rx="3" ry="2" fill="#fff" opacity="0.4"/>
+  <rect x="24" y="36" width="16" height="10" rx="2" fill="#1a73e8"/>
+  <text x="27" y="44" font-size="8" fill="#fff" font-weight="bold">STS</text>
+  <rect x="6" y="30" width="12" height="14" rx="5" fill="#e8e8e8" stroke="#ccc" stroke-width="1"/>
+  <rect x="46" y="30" width="12" height="14" rx="5" fill="#e8e8e8" stroke="#ccc" stroke-width="1"/>
+  <circle cx="12" cy="44" r="5" fill="#ccc"/>
+  <circle cx="52" cy="44" r="5" fill="#ccc"/>
+  <rect x="22" y="54" width="9" height="10" rx="3" fill="#e8e8e8" stroke="#ccc" stroke-width="1"/>
+  <rect x="33" y="54" width="9" height="10" rx="3" fill="#e8e8e8" stroke="#ccc" stroke-width="1"/>
+  <rect x="20" y="60" width="13" height="4" rx="2" fill="#ccc"/>
+  <rect x="31" y="60" width="13" height="4" rx="2" fill="#ccc"/>
+</svg>

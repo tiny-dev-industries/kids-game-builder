@@ -1,22 +1,31 @@
 import OpenAI from 'openai'
 import { GameConfig, SPEED_MIN, SPEED_MAX, GameCodeResult } from './types'
+import { getCatalogSummary, ALL_CHARACTER_IDS, ALL_BG_IDS } from './assets'
 
 export type { GameConfig }
 export { SPEED_MIN, SPEED_MAX }
+
+// Build once at module load — injected into both AI system prompts
+const ASSET_CATALOG_BLOCK = getCatalogSummary()
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-const CREATE_SYSTEM_PROMPT = `You are a fun game design helper for kids. A kid will describe a game idea and you will turn it into a game config.
+const CREATE_SYSTEM_PROMPT = `${ASSET_CATALOG_BLOCK}
 
-Your job: pick the best emojis, colors, and template that match their description.
+You are a fun game design helper for kids. A kid will describe a game idea and you will turn it into a game config.
+
+Your job: pick the best emojis, colors, template, AND sprites that match their description.
 
 Rules:
 - template: "runner" for side-scrolling games where the hero jumps over enemies; "topdown" for games where the player moves in all 4 directions avoiding enemies from above
-- heroEmoji: one emoji that represents the player character
-- enemyEmoji: one emoji that represents the obstacle/enemy to dodge
-- backgroundColor: a hex color for the sky/background (make it match the theme)
+- heroEmoji: one emoji that represents the player character (always required as fallback)
+- enemyEmoji: one emoji that represents the obstacle/enemy to dodge (always required as fallback)
+- heroSpriteId: optional — pick from the hero sprites list above if a good match exists; omit otherwise
+- enemySpriteId: optional — pick from the enemy sprites list above if a good match exists; omit otherwise
+- bgId: optional — pick from the backgrounds list above if a good match exists; omit otherwise
+- backgroundColor: a hex color for the sky/background (make it match the theme; used when no bgId)
 - groundColor: always "#5a8a5a" (green ground, used only in runner template)
 - title: a fun short game title (max 20 chars)
 - speed: a number between 200 and 350 (how fast things move — start reasonable, not too fast)
@@ -35,11 +44,21 @@ Template examples:
 - If the prompt includes "[preferred template: runner]", lean toward "runner" unless the description clearly implies overhead/arena movement
 - When in doubt, use "runner"
 
+Sprite selection examples:
+- "a knight fighting dragons" → heroSpriteId: "hero-knight", enemySpriteId: "enemy-dragon", bgId: "bg-dungeon"
+- "space explorer avoiding aliens" → heroSpriteId: "hero-astronaut", enemySpriteId: "enemy-alien", bgId: "bg-space"
+- "a wizard dodging bats" → heroSpriteId: "hero-wizard", enemySpriteId: "enemy-bat", bgId: "bg-dungeon"
+- "a cat jumping over slimes" → heroSpriteId: "hero-cat", enemySpriteId: "enemy-slime", bgId: "bg-forest"
+- "a 🐸 frog" → no sprite match; omit sprite fields, use frog emoji
+
 Respond with ONLY valid JSON, no explanation, no markdown:
 {
   "template": "runner",
   "heroEmoji": "🐶",
+  "heroSpriteId": "hero-knight",
   "enemyEmoji": "🐱",
+  "enemySpriteId": "enemy-dragon",
+  "bgId": "bg-dungeon",
   "backgroundColor": "#87CEEB",
   "groundColor": "#5a8a5a",
   "title": "Dog Jump!",
@@ -47,7 +66,9 @@ Respond with ONLY valid JSON, no explanation, no markdown:
   "jumpForce": 580
 }`
 
-const UPDATE_SYSTEM_PROMPT = `You are a fun game design helper for kids. A kid has an existing game and wants to change something about it.
+const UPDATE_SYSTEM_PROMPT = `${ASSET_CATALOG_BLOCK}
+
+You are a fun game design helper for kids. A kid has an existing game and wants to change something about it.
 
 You will receive:
 1. The current game config (JSON)
@@ -61,9 +82,17 @@ Speed rules (range is 180–600):
 - "make it slower" or "easier" → subtract exactly 75 from current speed (floor at 180)
 - Never go above 600 or below 180
 
+Sprite rules:
+- "use the knight sprite" or "make the hero a knight" → set heroSpriteId: "hero-knight"
+- "use a dragon enemy" → set enemySpriteId: "enemy-dragon"
+- "add a space background" or "use the starfield" → set bgId: "bg-space"
+- "remove the sprite" or "use emoji" or "go back to emoji" → omit/null the relevant sprite field
+- When changing heroEmoji, also clear heroSpriteId (set to null) if the new emoji doesn't match the old sprite
+- When changing enemyEmoji, also clear enemySpriteId (set to null) if the new emoji doesn't match the old sprite
+
 Other rules:
-- "change the hero to a cat" → update heroEmoji only
-- "make the background purple" → update backgroundColor only
+- "change the hero to a cat" → update heroEmoji only (and heroSpriteId: "hero-cat" if a cat sprite exists)
+- "make the background purple" → update backgroundColor only, and clear bgId
 - "switch to top-down" or "make it overhead" → update template to "topdown"
 - "switch to runner" or "make it side-scroll" → update template to "runner"
 - groundColor: always keep as "#5a8a5a"
@@ -128,6 +157,11 @@ export async function generateGameConfig(
       config.template = isUpdate ? (currentConfig.template ?? 'runner') : 'runner'
     }
 
+    // Validate sprite IDs — strip any hallucinated IDs not in the catalog
+    if (config.heroSpriteId  && !ALL_CHARACTER_IDS.has(config.heroSpriteId))  delete config.heroSpriteId
+    if (config.enemySpriteId && !ALL_CHARACTER_IDS.has(config.enemySpriteId)) delete config.enemySpriteId
+    if (config.bgId          && !ALL_BG_IDS.has(config.bgId))                 delete config.bgId
+
     // In update mode, fill any missing fields from the current config as safety net
     if (isUpdate) {
       config.heroEmoji = config.heroEmoji || currentConfig.heroEmoji
@@ -135,6 +169,10 @@ export async function generateGameConfig(
       config.backgroundColor = config.backgroundColor || currentConfig.backgroundColor
       config.title = config.title || currentConfig.title
       config.template = config.template || currentConfig.template || 'runner'
+      // Preserve sprite IDs from current config if not explicitly changed
+      if (config.heroSpriteId  === undefined && currentConfig.heroSpriteId)  config.heroSpriteId  = currentConfig.heroSpriteId
+      if (config.enemySpriteId === undefined && currentConfig.enemySpriteId) config.enemySpriteId = currentConfig.enemySpriteId
+      if (config.bgId          === undefined && currentConfig.bgId)          config.bgId          = currentConfig.bgId
     }
 
     return config
