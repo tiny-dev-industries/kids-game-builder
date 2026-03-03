@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-03-03
+
+### Added — Bidirectional postMessage (GAME_READY / GAME_ERROR)
+
+- **`GAME_READY` signal** — `RunnerScene` and `TopDownScene` both emit `window.parent.postMessage({ type: 'GAME_READY' })` at the end of their `create()` method, confirming Phaser fully initialized
+- **`GAME_ERROR` signal** — `LOAD_CONFIG` handler now wraps `startGame()` in try/catch and emits `GAME_ERROR` on failure; `LOAD_CODE` handler emits `GAME_ERROR` in the catch block
+- **`LOAD_CODE` success signal** — emits `GAME_READY` via 500ms `setTimeout` after generated code executes without throwing (gives Phaser time to initialize)
+- **3-state UI badge** in game area:
+  - ⏳ **Loading...** (gray) — game sent to iframe, waiting for `GAME_READY`
+  - 🎮/🕹️ **Playing!** (green/orange) — `GAME_READY` confirmed
+  - ⚠️ **Error** (red) — `GAME_ERROR` received
+- Badge resets to Loading state on every new game generation
+
+---
+
 ## [0.6.1] - 2026-03-03
 
 ### Added — Mobile Web Support

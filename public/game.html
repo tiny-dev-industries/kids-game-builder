@@ -467,6 +467,9 @@
           this.time.delayedCall(2000, () => {
             if (this.startMsg) this.startMsg.setAlpha(0);
           });
+
+          // Signal to parent page that the game started successfully
+          window.parent.postMessage({ type: 'GAME_READY' }, '*');
         }
 
         doJump() {
@@ -644,6 +647,9 @@
             backgroundColor: '#0008', padding: { x: 14, y: 6 },
           }).setOrigin(0.5).setDepth(10);
           this.time.delayedCall(2500, () => { if (hint) hint.setAlpha(0); });
+
+          // Signal to parent page that the game started successfully
+          window.parent.postMessage({ type: 'GAME_READY' }, '*');
         }
 
         update(time, delta) {
@@ -774,7 +780,11 @@
           window.__phaserGame.destroy(true);
           window.__phaserGame = null;
         }
-        startGame(event.data.config);
+        try {
+          startGame(event.data.config);
+        } catch (err) {
+          window.parent.postMessage({ type: 'GAME_ERROR', message: err.message || String(err) }, '*');
+        }
 
       } else if (event.data.type === 'LOAD_CODE') {
         // Tear down runner/topdown game and any previous code game
@@ -787,12 +797,17 @@
         try {
           // Generated code runs here; it must set window.__phaserGame = new Phaser.Game(...)
           (new Function(event.data.code))();
+          // No throw — give Phaser 500ms to initialize then signal ready
+          setTimeout(function() {
+            window.parent.postMessage({ type: 'GAME_READY' }, '*');
+          }, 500);
         } catch (err) {
           console.error('[LOAD_CODE] Generated game error:', err);
           if (ph) {
             ph.style.display = '';
             ph.innerHTML = '<div class="big">⚠️</div><div>Oops, couldn\'t start that game.</div><div style="font-size:13px;color:#666;margin-top:8px">Try asking again — the AI might do better!</div>';
           }
+          window.parent.postMessage({ type: 'GAME_ERROR', message: err.message || String(err) }, '*');
         }
       }
     });

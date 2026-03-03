@@ -465,6 +465,8 @@ export default function Home() {
   const [transcript, setTranscript] = useState('')
   const [currentConfig, setCurrentConfig] = useState<GameConfig | null>(null)
   const [activeTab, setActiveTab] = useState<ActiveTab>('chat')
+  const [gameReady, setGameReady] = useState(false)
+  const [gameError, setGameError] = useState<string | null>(null)
 
   // M3: game clone mode
   const [inputMode, setInputMode] = useState<InputMode>('simple')
@@ -499,6 +501,22 @@ export default function Home() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Listen for GAME_READY / GAME_ERROR signals from the game iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data) return
+      if (event.data.type === 'GAME_READY') {
+        setGameReady(true)
+        setGameError(null)
+      } else if (event.data.type === 'GAME_ERROR') {
+        setGameError(event.data.message || 'Game failed to start')
+        setGameReady(false)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
 
   const sendConfigToGame = useCallback((config: GameConfig) => {
     const iframe = iframeRef.current
@@ -547,6 +565,10 @@ export default function Home() {
       : trimmed
 
     try {
+      // Reset game ready signal for the new generation
+      setGameReady(false)
+      setGameError(null)
+
       // For brand-new config games, hint the AI toward the preferred template
       const promptWithHint = (!isCodeMode && gameMode !== 'config' && gameMode !== 'code')
         ? `${trimmed} [preferred template: ${preferredTemplate}]`
@@ -733,7 +755,7 @@ export default function Home() {
               <h1 className="text-lg font-bold text-white leading-tight">Game Maker</h1>
               <p className="text-xs text-gray-400 truncate">{subtitle}</p>
             </div>
-            <span className="text-[10px] text-gray-600 font-mono shrink-0 select-none">v0.6.1</span>
+            <span className="text-[10px] text-gray-600 font-mono shrink-0 select-none">v0.6.2</span>
           </div>
 
           {/* Tab bar — desktop only; mobile uses bottom nav */}
@@ -936,11 +958,13 @@ export default function Home() {
           title="Game Preview"
           sandbox="allow-scripts allow-same-origin"
         />
-        {state === 'playing' && (
-          <div className={`absolute top-4 right-4 backdrop-blur text-white text-xs px-3 py-1.5 rounded-full font-medium ${
+        {isPlaying && (
+          <div className={`absolute top-4 right-4 backdrop-blur text-white text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+            gameError           ? 'bg-red-600/90' :
+            !gameReady          ? 'bg-gray-600/80' :
             gameMode === 'code' ? 'bg-orange-500/90' : 'bg-green-600/90'
           }`}>
-            {gameMode === 'code' ? '🕹️ Playing!' : '🎮 Playing!'}
+            {gameError ? '⚠️ Error' : !gameReady ? '⏳ Loading...' : gameMode === 'code' ? '🕹️ Playing!' : '🎮 Playing!'}
           </div>
         )}
       </div>
