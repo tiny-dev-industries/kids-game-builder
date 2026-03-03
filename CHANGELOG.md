@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-03-03
+
+### Added — Mobile Web Support
+
+- **Viewport meta tag** — proper `width=device-width, initialScale=1, maximumScale=1, viewportFit=cover` via Next.js `Viewport` export; prevents auto-zoom on input focus and respects iPhone notch safe areas
+- **Mobile bottom navigation bar** — fixed `Chat | Game | Settings` tab bar on screens < 1024px (iPad portrait, iPhone); hidden on desktop (lg+)
+  - Chat: switches to chat panel (green active indicator)
+  - Game: shows game iframe full-screen (blue active indicator + live-game dot badge)
+  - Settings: switches to settings panel (blue active indicator)
+- **Responsive layout** — full-width panel on mobile vs. 320px sidebar on desktop; `h-[100dvh]` for correct height on mobile browsers
+- **Game iframe sizing** — on mobile game view, `pb-14` on the container lets Phaser size its canvas to the visible area above the nav (no overlap)
+- **Touch optimizations** in `globals.css`:
+  - `touch-action: manipulation` on buttons/links (removes 300ms tap delay)
+  - `-webkit-tap-highlight-color: transparent` (removes blue tap flash)
+  - `overscroll-behavior: none` on html/body (prevents elastic bounce)
+  - Safe-area utilities: `.pb-safe`, `.h-nav`, `.mb-nav` for iPhone notch/home-indicator support
+- **Desktop sub-tabs hidden on mobile** — Chat/Settings switcher in sidebar header replaced by bottom nav on mobile
+
+---
+
 ## [0.6.0] - 2026-03-03
 
 ### Added — Milestone 6: Actions System + Chat Targeting

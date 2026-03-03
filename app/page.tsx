@@ -481,6 +481,14 @@ export default function Home() {
   const chatEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Mobile navigation — which full-screen panel is visible on small screens
+  const [mobileView, setMobileView] = useState<'game' | 'chat' | 'settings'>('chat')
+
+  const switchMobileView = useCallback((view: 'game' | 'chat' | 'settings') => {
+    setMobileView(view)
+    if (view !== 'game') setActiveTab(view as ActiveTab)
+  }, [])
+
   const isPlaying = gameMode !== null
 
   useEffect(() => {
@@ -702,9 +710,15 @@ export default function Home() {
   })()
 
   return (
-    <div className="flex h-screen bg-gray-900 overflow-hidden">
-      {/* Left Rail */}
-      <div className="w-80 bg-gray-800 flex flex-col border-r border-gray-700">
+    <div className="flex h-[100dvh] bg-gray-900 overflow-hidden">
+      {/* Left Rail — full-width on mobile, fixed 320px sidebar on desktop (lg+) */}
+      <div className={[
+        'bg-gray-800 flex-col border-gray-700',
+        // Desktop: fixed sidebar
+        'lg:flex lg:w-80 lg:border-r lg:pb-0',
+        // Mobile: full-width, push content above fixed bottom nav; shown for chat/settings, hidden for game
+        mobileView === 'game' ? 'hidden' : 'flex w-full mb-nav',
+      ].join(' ')}>
 
         {/* Header */}
         <div className="p-4 pb-0 border-b border-gray-700">
@@ -716,8 +730,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Tab bar */}
-          <div className="flex">
+          {/* Tab bar — desktop only; mobile uses bottom nav */}
+          <div className="hidden lg:flex">
             <button
               onClick={() => setActiveTab('chat')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium border-b-2 transition-colors ${
@@ -900,8 +914,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Right Rail — game iframe */}
-      <div className="flex-1 relative bg-gray-900">
+      {/* Right Rail — game iframe; always visible on desktop, shown only when mobileView=game on mobile.
+          On mobile we add pb-14 so the iframe shrinks to fit above the fixed bottom nav,
+          letting Phaser size its canvas to the actually-visible area. */}
+      <div className={[
+        'relative bg-gray-900',
+        mobileView === 'game'
+          ? 'flex flex-col flex-1 pb-14 lg:pb-0'
+          : 'hidden lg:flex lg:flex-col lg:flex-1',
+      ].join(' ')}>
         <iframe
           ref={iframeRef}
           src="/game.html"
@@ -918,6 +939,49 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* ── Mobile bottom navigation — hidden on desktop ── */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-gray-900/95 backdrop-blur-md border-t border-gray-700 flex h-nav">
+        <button
+          onClick={() => switchMobileView('chat')}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 pb-safe text-xs font-medium transition-colors ${
+            mobileView === 'chat' ? 'text-green-400' : 'text-gray-500'
+          }`}
+        >
+          <MessageSquare size={20} />
+          <span>Chat</span>
+        </button>
+
+        <button
+          onClick={() => switchMobileView('game')}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 pb-safe text-xs font-medium relative transition-colors ${
+            mobileView === 'game' ? 'text-blue-400' : 'text-gray-500'
+          }`}
+        >
+          <Gamepad2 size={20} />
+          <span>Game</span>
+          {isPlaying && (
+            <span className={`absolute top-2 right-[28%] w-2 h-2 rounded-full ${
+              gameMode === 'code' ? 'bg-orange-400' : 'bg-green-400'
+            }`} />
+          )}
+        </button>
+
+        <button
+          onClick={() => switchMobileView('settings')}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 pb-safe text-xs font-medium relative transition-colors ${
+            mobileView === 'settings' ? 'text-blue-400' : 'text-gray-500'
+          }`}
+        >
+          <Settings size={20} />
+          <span>Settings</span>
+          {isPlaying && mobileView !== 'settings' && (
+            <span className={`absolute top-2 right-[28%] w-1.5 h-1.5 rounded-full ${
+              gameMode === 'code' ? 'bg-orange-400' : 'bg-blue-500'
+            }`} />
+          )}
+        </button>
+      </nav>
     </div>
   )
 }

@@ -4,9 +4,37 @@
 
 * {
   box-sizing: border-box;
+  /* Remove blue tap flash on Android/iOS */
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  /* Prevent elastic overscroll bounce on iOS */
+  overscroll-behavior: none;
 }
 
 body {
   margin: 0;
   padding: 0;
+  overscroll-behavior: none;
+}
+
+/* Remove 300ms tap delay on buttons/links */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Safe-area bottom padding utility (iPhone home indicator) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Bottom nav height = 56px + safe area */
+.h-nav {
+  height: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Push content above the fixed bottom nav */
+.mb-nav {
+  padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
 }
