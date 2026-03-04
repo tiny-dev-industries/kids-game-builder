@@ -689,10 +689,29 @@ export default function Home() {
       const hasActions = (currentConfig?.actions?.length ?? 0) > 0
       const actionChips = hasActions ? ['Add more actions'] : ['Add extra lives', 'Add collectible stars']
       return isTopDown
-        ? ['Make it faster', 'Make it harder', 'Switch to runner', ...actionChips]
+        ? ['Make it faster', 'Make it harder', ...actionChips]
         : ['Make it faster', 'Make it harder', 'Change the hero', ...actionChips]
     }
     return []
+  })()
+
+  // Style chips — shown after game loads; auto-submit to switch style
+  const styleChips: { label: string; prompt: string }[] = (() => {
+    if (!gameReady || gameMode !== 'config') return []
+    const isTopDown = currentConfig?.template === 'topdown'
+    if (isTopDown) {
+      return [
+        { label: '🏃 Go Runner',       prompt: 'switch to a side-scrolling runner game' },
+        { label: '⭐ Add Collectibles', prompt: 'add collectibles to pick up for bonus points' },
+        { label: '💀 More Enemies',    prompt: 'make enemies spawn faster and more often' },
+      ]
+    } else {
+      return [
+        { label: '🎯 Go Top-Down',     prompt: 'switch to a top-down overhead game' },
+        { label: '⭐ Add Collectibles', prompt: 'add collectibles to pick up for bonus points' },
+        { label: '🧗 Harder/Faster',   prompt: 'make it harder and faster with more obstacles' },
+      ]
+    }
   })()
 
   // Header subtitle
@@ -755,7 +774,7 @@ export default function Home() {
               <h1 className="text-lg font-bold text-white leading-tight">Game Maker</h1>
               <p className="text-xs text-gray-400 truncate">{subtitle}</p>
             </div>
-            <span className="text-[10px] text-gray-600 font-mono shrink-0 select-none">v0.6.2</span>
+            <span className="text-[10px] text-gray-600 font-mono shrink-0 select-none">v0.7.0</span>
           </div>
 
           {/* Tab bar — desktop only; mobile uses bottom nav */}
@@ -882,6 +901,21 @@ export default function Home() {
               >
                 🕹️ Build a Clone
               </button>
+            </div>
+          )}
+
+          {/* Style chips — shown after game is ready; auto-submit on click */}
+          {styleChips.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {styleChips.map(chip => (
+                <button
+                  key={chip.label}
+                  onClick={() => handleGenerate(chip.prompt)}
+                  className="text-xs bg-blue-900/50 hover:bg-blue-800/60 text-blue-300 border border-blue-700/50 px-2.5 py-1 rounded-full transition-colors"
+                >
+                  {chip.label}
+                </button>
+              ))}
             </div>
           )}
 

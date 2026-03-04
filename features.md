@@ -1,6 +1,6 @@
 # Kids Game Builder — Feature Registry
 
-_Current version: **v0.6.2** | Production: https://kids-game-builder.vercel.app_
+_Current version: **v0.7.0** | Production: https://kids-game-builder.vercel.app_
 
 ## Legend
 ✅ Implemented &nbsp; 🚧 In Progress &nbsp; ⏳ Planned &nbsp; ❌ Dropped
@@ -125,6 +125,16 @@ _Current version: **v0.6.2** | Production: https://kids-game-builder.vercel.app_
 | ✅ | `GAME_READY` emitted after 500ms on successful LOAD_CODE execution | `public/game.html` |
 | ✅ | `window.addEventListener('message')` in parent — updates `gameReady` / `gameError` state | `app/page.tsx` |
 | ✅ | 3-state badge: ⏳ Loading (gray) → 🎮/🕹️ Playing! (green/orange) → ⚠️ Error (red) | `app/page.tsx` |
+
+---
+
+## M7a — Smart Style Vocab + Post-Game Chips (v0.7.0)
+
+| Status | Feature | Key Files |
+|--------|---------|-----------|
+| ✅ | AI style vocabulary — "obstacle course" → runner + speed-ramp; "collector" → collectible; "top-down" → topdown | `lib/ai.ts` (CREATE_SYSTEM_PROMPT) |
+| ✅ | Post-game style chips (auto-submit) — `🎯 Go Top-Down`, `⭐ Add Collectibles`, `🧗 Harder/Faster` (runner); `🏃 Go Runner`, `💀 More Enemies` (topdown) | `app/page.tsx` (styleChips) |
+| ✅ | Style chips shown only after `gameReady` (not on first load), with blue visual treatment distinct from gray hint chips | `app/page.tsx` |
 
 ---
 

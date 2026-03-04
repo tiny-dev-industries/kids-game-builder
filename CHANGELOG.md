@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-03-04
+
+### Added — M7a: Smart Style Vocab + Post-Game Style Chips
+
+- **AI style vocabulary** — `CREATE_SYSTEM_PROMPT` now maps natural-language style words to game config:
+  - "obstacle course", "hurdles", "parkour" → runner template + speed-ramp action + shorter spawn interval
+  - "collecting", "collector", "gather", "pick up" → adds collectible action with a matching emoji
+  - "top-down", "overhead", "arena", "maze" → topdown template
+- **Post-game style chips** — after a config game loads (`gameReady`), a row of one-tap style-switch chips appears above the input area; each chip auto-submits directly without requiring the user to type:
+  - Runner mode: `🎯 Go Top-Down`, `⭐ Add Collectibles`, `🧗 Harder/Faster`
+  - Top-Down mode: `🏃 Go Runner`, `⭐ Add Collectibles`, `💀 More Enemies`
+- Style chips are visually distinct from hint chips (blue tint, bordered) to signal they're structural changes
+
+---
+
 ## [0.6.2] - 2026-03-03
 
 ### Added — Bidirectional postMessage (GAME_READY / GAME_ERROR)

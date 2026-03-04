@@ -65,6 +65,14 @@ Template examples:
 - If the prompt includes "[preferred template: runner]", lean toward "runner" unless the description clearly implies overhead/arena movement
 - When in doubt, use "runner"
 
+Vocabulary: detect these styles from the user's words and apply automatically:
+- "obstacle course", "obstacles", "hurdles", "hurdle", "parkour", "obstacle run" →
+    template: "runner", speed 260–300, ALWAYS include speed-ramp action, shorter spawnInterval (1200–1600ms) for denser obstacles
+- "collecting", "collector", "collect", "gathering", "pick up", "gatherer" →
+    add collectible action with an emoji matching the theme (stars ⭐, coins 🪙, gems 💎, fish 🐟, etc.)
+- "top-down", "overhead", "arena", "dodge in all directions", "4 directions", "top down", "bird's eye", "maze" →
+    template: "topdown"
+
 Sprite selection examples:
 - "a knight fighting dragons" → heroSpriteId: "hero-knight", enemySpriteId: "enemy-dragon", bgId: "bg-dungeon"
 - "space explorer avoiding aliens" → heroSpriteId: "hero-astronaut", enemySpriteId: "enemy-alien", bgId: "bg-space"
