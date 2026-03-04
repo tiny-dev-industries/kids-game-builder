@@ -481,6 +481,24 @@
           }
         }
 
+        spawnOneEnemy(speed) {
+          var groundY = GROUND_Y;
+          var diff = (currentConfig && currentConfig.difficulty) || {};
+          var fastChance = diff.fastEnemyChance != null ? diff.fastEnemyChance : 0.15;
+          var speedMult  = Math.random() < fastChance ? 1.5 : 1.0;
+          var enemy;
+          if (this.useEnemySpr) {
+            enemy = this.add.image(W + 40, groundY - 16, 'enemy-spr')
+              .setDisplaySize(48, 48).setOrigin(0.5, 1);
+          } else {
+            enemy = this.add.text(W + 40, groundY - 10, config.enemyEmoji, {
+              fontSize: '48px', fontFamily: 'Arial'
+            }).setOrigin(0.5, 1);
+          }
+          enemy.velocityX = -(speed * speedMult + Phaser.Math.Between(0, 40));
+          this.enemies.push(enemy);
+        }
+
         update(time, delta) {
           if (this.gameOver) return;
           var dt = delta / 1000;
@@ -504,22 +522,25 @@
             this.isJumping = false;
           }
 
-          // Spawn enemies
+          // Spawn enemies — progressive difficulty
           this.spawnTimer += delta;
           if (this.spawnTimer >= this.spawnInterval) {
             this.spawnTimer = 0;
-            this.spawnInterval = Phaser.Math.Between(1500, 2800);
-            var enemy;
-            if (this.useEnemySpr) {
-              enemy = this.add.image(W + 40, groundY - 16, 'enemy-spr')
-                .setDisplaySize(48, 48).setOrigin(0.5, 1);
-            } else {
-              enemy = this.add.text(W + 40, groundY - 10, config.enemyEmoji, {
-                fontSize: '48px', fontFamily: 'Arial'
-              }).setOrigin(0.5, 1);
+            // Interval shrinks over time; jitter ±25% breaks metronomic rhythm
+            var diff = (currentConfig && currentConfig.difficulty) || {};
+            var spawnDecay = diff.spawnDecay != null ? diff.spawnDecay : 8;   // ms/sec
+            var spawnMin   = diff.spawnMin   != null ? diff.spawnMin   : 900;  // floor ms
+            var spawnBase  = Math.max(spawnMin, 2200 - (time / 1000) * spawnDecay);
+            this.spawnInterval = Phaser.Math.Between(spawnBase * 0.75, spawnBase * 1.25);
+            this.spawnOneEnemy(speed);
+            // Burst: occasional quick follow-up enemy breaks the rhythm further
+            var burstChance = diff.burstChance != null ? diff.burstChance : 0.2;
+            if (Math.random() < burstChance) {
+              var self = this;
+              this.time.delayedCall(Phaser.Math.Between(350, 600), function() {
+                if (!self.gameOver) self.spawnOneEnemy(speed);
+              });
             }
-            enemy.velocityX = -(speed + Phaser.Math.Between(0, 60));
-            this.enemies.push(enemy);
           }
 
           // Move enemies + collision
@@ -681,9 +702,12 @@
           this.heroY = Math.max(32, Math.min(H - 32, this.heroY + vy * speed * dt));
           this.heroObj.setPosition(this.heroX, this.heroY);
 
-          // ── Spawn enemies ─────────────────────────────────────────────────────
+          // ── Spawn enemies — progressive difficulty ────────────────────────────
           var elapsed = Math.floor(time / 1000);
-          var spawnInterval = Math.max(600, 2200 - elapsed * 80);
+          var tdDiff    = (currentConfig && currentConfig.difficulty) || {};
+          var tdDecay   = tdDiff.spawnDecay != null ? tdDiff.spawnDecay : 12;  // ms/sec (default 12 → peak at ~2.2 min)
+          var tdMin     = tdDiff.spawnMin   != null ? tdDiff.spawnMin   : 600;
+          var spawnInterval = Math.max(tdMin, 2200 - elapsed * tdDecay);
           if (time - this.lastSpawn > spawnInterval) {
             this.spawnEnemy(); this.lastSpawn = time;
           }

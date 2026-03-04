@@ -80,6 +80,15 @@ Sprite selection examples:
 - "a cat jumping over slimes" → heroSpriteId: "hero-cat", enemySpriteId: "enemy-slime", bgId: "bg-forest"
 - "a 🐸 frog" → no sprite match; omit sprite fields, use frog emoji
 
+Difficulty (optional "difficulty" field — omit entirely for normal games):
+- "easy", "for young kids", "very easy", "simple" →
+    difficulty: { spawnDecay: 4, spawnMin: 1300, burstChance: 0.05, fastEnemyChance: 0 }
+- "hard", "challenging", "difficult", "very hard", "intense" →
+    difficulty: { spawnDecay: 15, spawnMin: 700, burstChance: 0.35, fastEnemyChance: 0.25 }
+- "obstacle course", "hurdles", "parkour" →
+    difficulty: { spawnDecay: 12, spawnMin: 750, burstChance: 0.3, fastEnemyChance: 0.2 }
+- default (no difficulty modifiers in description) → omit difficulty field entirely
+
 Respond with ONLY valid JSON, no explanation, no markdown:
 {
   "template": "runner",
@@ -137,6 +146,14 @@ Actions rules for updates:
 - "remove [action name]" or "remove all actions" → remove matching action(s) from array
 - "add double points" → add/replace double-points action
 - Always preserve actions not mentioned by the kid
+
+Difficulty update rules (update or add "difficulty" field):
+- "make it harder", "too easy", "more enemies" → increase spawnDecay by ~5, decrease spawnMin by ~150, increase burstChance by 0.1
+- "make it easier", "too hard", "fewer enemies" → decrease spawnDecay by ~4, increase spawnMin by ~200, decrease burstChance by 0.1
+- "make it more varied", "too repetitive", "more variety" → increase burstChance by 0.1, increase fastEnemyChance by 0.1
+- "reset difficulty", "normal difficulty" → remove difficulty field entirely (set to null/undefined)
+- Keep values in bounds: spawnDecay 2–20, spawnMin 500–1600, burstChance 0–0.4, fastEnemyChance 0–0.3
+- Preserve existing difficulty values not mentioned
 
 Respond with ONLY valid JSON of the complete updated config, no explanation, no markdown.`
 
@@ -227,6 +244,12 @@ export async function generateGameConfig(
       if (!config.actions && currentConfig.actions?.length) {
         config.actions = currentConfig.actions
       }
+      // Preserve difficulty from current config if AI didn't change it
+      // (null means AI explicitly removed it; undefined means AI didn't mention it)
+      if (config.difficulty === undefined && currentConfig.difficulty) {
+        config.difficulty = currentConfig.difficulty
+      }
+      if (config.difficulty === null) delete config.difficulty
     }
 
     return config

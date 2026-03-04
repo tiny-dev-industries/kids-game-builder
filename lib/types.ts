@@ -32,6 +32,13 @@ export interface GameAction {
   }
 }
 
+export interface GameDifficulty {
+  spawnDecay?: number       // ms/sec the spawn interval shrinks (runner default: 8, topdown: 12)
+  spawnMin?: number         // minimum spawn interval in ms (runner: 900, topdown: 600)
+  burstChance?: number      // 0–1, chance of a burst follow-up spawn after each enemy (runner: 0.2)
+  fastEnemyChance?: number  // 0–1, chance of an enemy moving 1.5× faster (runner: 0.15)
+}
+
 export interface GameConfig {
   template: 'runner' | 'topdown'
   heroEmoji: string
@@ -44,7 +51,8 @@ export interface GameConfig {
   title: string
   speed: number
   jumpForce: number
-  actions?: GameAction[]   // 0–3 AI-defined game-event behaviors
+  actions?: GameAction[]       // 0–3 AI-defined game-event behaviors
+  difficulty?: GameDifficulty  // progression tuning; omit for engine defaults
 }
 
 export const SPEED_MIN = 180

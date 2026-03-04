@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-03-04
+
+### Added — M8: Progression Mechanics
+
+**Runner template — progressive difficulty (was flat random forever):**
+- Spawn interval now decays over time: `max(spawnMin, 2200 − elapsed_secs × spawnDecay)` ± 25% jitter
+- Default ramp: ~2200ms at start → ~900ms peak (~2.7 min) — game gets noticeably harder
+- **Burst mechanic** (20% default): after each spawn, a second enemy follows 350–600ms later, breaking the predictable rhythm
+- **Speed variance** (15% default): occasional enemy moves 1.5× faster, requiring faster reactions
+- Extracted `spawnOneEnemy(speed)` method so both timer and burst callbacks share the same logic
+
+**Top-down template — fixed too-aggressive ramp:**
+- Was: `2200 − elapsed × 80` (hit max density in ~20 seconds — way too fast)
+- Now: `2200 − elapsed × 12` (reaches 600ms minimum at ~2.2 min) — appropriate for 1–8 min mini-games
+
+**`GameDifficulty` interface** (new optional field in `GameConfig`):
+- `spawnDecay`, `spawnMin`, `burstChance`, `fastEnemyChance` all configurable per-game
+- AI preserves difficulty across updates; returning `null` removes it
+
+**AI updates (`lib/ai.ts`):**
+- CREATE: difficulty presets for "easy", "hard", "obstacle course" vocabulary
+- UPDATE: rules for "make it harder / easier / more varied / reset difficulty"
+- generateGameConfig: passes difficulty through on updates (same pattern as actions)
+
+**Settings panel — Difficulty Picker:**
+- 😊 Easy / ⚡ Normal / 💀 Hard one-tap presets, visible after a config game loads
+- Triggers LOAD_CONFIG → game restarts with new difficulty immediately
+
+---
+
 ## [0.7.0] - 2026-03-04
 
 ### Added — M7a: Smart Style Vocab + Post-Game Style Chips

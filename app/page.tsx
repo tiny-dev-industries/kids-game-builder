@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Mic, MicOff, Gamepad2, Sparkles, RefreshCw, MessageSquare, Settings, Code2 } from 'lucide-react'
-import { GameConfig, GameAction, SPEED_MIN, SPEED_MAX } from '@/lib/types'
+import { GameConfig, GameDifficulty, GameAction, SPEED_MIN, SPEED_MAX } from '@/lib/types'
 import { HERO_SPRITES, ENEMY_SPRITES, BG_ASSETS, CharacterAsset, BackgroundAsset } from '@/lib/assets'
 
 type AppState = 'idle' | 'listening' | 'thinking' | 'playing'
@@ -227,6 +227,55 @@ function ActionCard({ action, onTarget }: { action: GameAction; onTarget?: () =>
   )
 }
 
+const DIFFICULTY_EASY: GameDifficulty = { spawnDecay: 4, spawnMin: 1300, burstChance: 0.05, fastEnemyChance: 0 }
+const DIFFICULTY_HARD: GameDifficulty = { spawnDecay: 15, spawnMin: 700, burstChance: 0.35, fastEnemyChance: 0.25 }
+
+function difficultyPreset(d?: GameDifficulty): 'easy' | 'normal' | 'hard' {
+  if (!d) return 'normal'
+  if (d.spawnDecay != null && d.spawnDecay <= 6) return 'easy'
+  if (d.spawnDecay != null && d.spawnDecay >= 12) return 'hard'
+  return 'normal'
+}
+
+function DifficultyPicker({ value, onChange }: {
+  value?: GameDifficulty
+  onChange: (d: GameDifficulty | undefined) => void
+}) {
+  const current = difficultyPreset(value)
+  const presets: { key: 'easy' | 'normal' | 'hard'; label: string; emoji: string }[] = [
+    { key: 'easy',   label: 'Easy',   emoji: '😊' },
+    { key: 'normal', label: 'Normal', emoji: '⚡' },
+    { key: 'hard',   label: 'Hard',   emoji: '💀' },
+  ]
+  const handleSelect = (key: 'easy' | 'normal' | 'hard') => {
+    if (key === 'easy')   onChange(DIFFICULTY_EASY)
+    if (key === 'normal') onChange(undefined)
+    if (key === 'hard')   onChange(DIFFICULTY_HARD)
+  }
+  return (
+    <div className="bg-gray-750 rounded-xl px-3 py-3 border border-gray-700">
+      <div className="text-xs text-gray-500 mb-2">⚙️ Difficulty</div>
+      <div className="flex bg-gray-700 rounded-xl p-0.5 gap-0.5">
+        {presets.map(p => (
+          <button
+            key={p.key}
+            onClick={() => handleSelect(p.key)}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              current === p.key
+                ? p.key === 'easy'   ? 'bg-green-600 text-white shadow-sm'
+                : p.key === 'hard'   ? 'bg-red-600 text-white shadow-sm'
+                :                      'bg-gray-900 text-white shadow-sm'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {p.emoji} {p.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobileTarget, onMobileToggle, preferredTemplate, onTemplatePreferenceChange, onTarget }: {
   config: GameConfig | null
   onConfigChange: (config: GameConfig) => void
@@ -294,6 +343,9 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
 
       {/* Template toggle */}
       <TemplateToggle value={config.template} onChange={v => update('template', v)} />
+
+      {/* Difficulty presets */}
+      <DifficultyPicker value={config.difficulty} onChange={v => update('difficulty', v)} />
 
       <SettingsRow icon="📛" label="Title" onTarget={() => onTarget('Change the game title to ')}>
         <input
@@ -774,7 +826,7 @@ export default function Home() {
               <h1 className="text-lg font-bold text-white leading-tight">Game Maker</h1>
               <p className="text-xs text-gray-400 truncate">{subtitle}</p>
             </div>
-            <span className="text-[10px] text-gray-600 font-mono shrink-0 select-none">v0.7.0</span>
+            <span className="text-[10px] text-gray-600 font-mono shrink-0 select-none">v0.8.0</span>
           </div>
 
           {/* Tab bar — desktop only; mobile uses bottom nav */}

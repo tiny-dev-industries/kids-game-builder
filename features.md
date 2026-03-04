@@ -1,6 +1,6 @@
 # Kids Game Builder — Feature Registry
 
-_Current version: **v0.7.0** | Production: https://kids-game-builder.vercel.app_
+_Current version: **v0.8.0** | Production: https://kids-game-builder.vercel.app_
 
 ## Legend
 ✅ Implemented &nbsp; 🚧 In Progress &nbsp; ⏳ Planned &nbsp; ❌ Dropped
@@ -125,6 +125,21 @@ _Current version: **v0.7.0** | Production: https://kids-game-builder.vercel.app_
 | ✅ | `GAME_READY` emitted after 500ms on successful LOAD_CODE execution | `public/game.html` |
 | ✅ | `window.addEventListener('message')` in parent — updates `gameReady` / `gameError` state | `app/page.tsx` |
 | ✅ | 3-state badge: ⏳ Loading (gray) → 🎮/🕹️ Playing! (green/orange) → ⚠️ Error (red) | `app/page.tsx` |
+
+---
+
+## M8 — Progression Mechanics (v0.8.0)
+
+| Status | Feature | Key Files |
+|--------|---------|-----------|
+| ✅ | Runner progressive spawn: `max(spawnMin, 2200 − elapsed×spawnDecay)` ± 25% jitter; default ramp to peak at ~2.7 min | `public/game.html` (RunnerScene.update) |
+| ✅ | Burst mechanic: 20% chance of quick follow-up enemy 350–600ms after each spawn | `public/game.html` (spawnOneEnemy + delayedCall) |
+| ✅ | Speed variance: 15% chance of 1.5× faster enemy per spawn | `public/game.html` (spawnOneEnemy) |
+| ✅ | Top-down ramp fixed: was `×80` (20s to peak), now `×12` (2.2 min to peak) | `public/game.html` (TopDownScene.update) |
+| ✅ | `GameDifficulty` type + `difficulty?` field in `GameConfig` (spawnDecay, spawnMin, burstChance, fastEnemyChance) | `lib/types.ts` |
+| ✅ | AI CREATE: difficulty presets for "easy", "hard", "obstacle course" | `lib/ai.ts` (CREATE_SYSTEM_PROMPT) |
+| ✅ | AI UPDATE: rules for "harder/easier/more varied/reset difficulty" + pass-through | `lib/ai.ts` (UPDATE_SYSTEM_PROMPT, generateGameConfig) |
+| ✅ | Settings panel Difficulty Picker: 😊 Easy / ⚡ Normal / 💀 Hard one-tap presets | `app/page.tsx` (DifficultyPicker component) |
 
 ---
 
