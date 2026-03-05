@@ -1,6 +1,6 @@
 # Kids Game Builder — Feature Registry
 
-_Current version: **v0.9.0** | Production: https://kids-game-builder.vercel.app_
+_Current version: **v0.9.1** | Production: https://kids-game-builder.vercel.app_
 
 ## Legend
 ✅ Implemented &nbsp; 🚧 In Progress &nbsp; ⏳ Planned &nbsp; ❌ Dropped

@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-03-05
+
+### Fixed — Overhead duck obstacles + baked-in speed progression
+
+**Duck obstacles (runner template):**
+- Low obstacles now spawn at `GROUND_Y − 55` (55–103px above ground = clearly head/shoulder height)
+- Default low obstacle emoji changed from `🪵` (log, ground-level) to `🔥` (floating hazard)
+- Custom fixed-world hitbox: `{ y: GROUND_Y − 70, h: 26 }` → bottom at `GROUND_Y − 44`
+  - Standing hero top (`GROUND_Y − 54`) < hitbox bottom (`GROUND_Y − 44`) → HIT ✓
+  - Ducking hero top (`GROUND_Y − 32`) > hitbox bottom (`GROUND_Y − 44`) → SAFE ✓
+  - Peak-jump hero (`GROUND_Y − 120`) entirely above hitbox → SAFE ✓
+- AI vocabulary updated: low obstacle emoji suggestions are now overhead hazards (🔥 ⚡ 🏹 🌿 🪨 🔱), not animals
+
+**Speed progression (runner template, always-on):**
+- Baked-in speed ramp: +20 px/s every 30 s, capped at +200 px/s above base speed
+- Formula: `bakedRamp = Math.min(200, Math.floor(time / 30000) * 20)`
+- Active for every runner game regardless of config — no action required
+- Burst enemies use the same captured `spawnSpeed` so arrival-gate math stays accurate
+
+---
+
 ## [0.9.0] - 2026-03-04
 
 ### Added — M9: Duck Mechanic + Low Obstacles
