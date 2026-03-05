@@ -884,7 +884,9 @@ export default function Home() {
     if (inputMode === 'clone') return 'Name a classic game (e.g. Lunar Lander, Pong, Flappy Bird...)'
     if (gameMode === 'code') return 'What would you like to change?'
     if (gameMode === 'config') return 'What would you like to change?'
-    return 'Describe your game...'
+    if (preferredTemplate === 'shooter') return 'e.g. "paintball arena with lots of walls" or "laser tag battle"'
+    if (preferredTemplate === 'topdown') return 'e.g. "spaceship dodging aliens" or "wizard avoiding ghosts"'
+    return 'e.g. "a dog jumping over cats" or "ninja dodging swords"'
   })()
 
   return (
@@ -911,7 +913,7 @@ export default function Home() {
               <h1 className="text-lg font-bold text-white leading-tight">Game Maker</h1>
               <p className="text-xs text-gray-400 truncate">{subtitle}</p>
             </div>
-            <span className="text-[10px] text-gray-600 font-mono shrink-0 select-none">v1.0.0</span>
+            <span className="text-[10px] text-gray-600 font-mono shrink-0 select-none">v1.0.1</span>
           </div>
 
           {/* Tab bar — desktop only; mobile uses bottom nav */}
@@ -960,10 +962,46 @@ export default function Home() {
         ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 && (
-              <div className="text-center text-gray-500 text-sm mt-8 px-4">
-                <div className="text-4xl mb-3">✨</div>
-                <p>Tell me about your game!</p>
-                <p className="text-xs mt-2 text-gray-600">Try: "a dog jumping over cats" or switch to Clone mode for Flappy Bird!</p>
+              <div className="mt-4 px-1">
+                <p className="text-center text-gray-400 text-xs font-semibold uppercase tracking-widest mb-3">What kind of game?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { key: 'runner',  emoji: '🏃', label: 'Runner',    desc: 'Jump & dodge obstacles' },
+                    { key: 'topdown', emoji: '⬆️', label: 'Top-Down',  desc: 'Move in all directions' },
+                    { key: 'shooter', emoji: '🔫', label: 'Shooter',   desc: 'Fight back with bullets' },
+                    { key: 'clone',   emoji: '🕹️', label: 'Clone',     desc: 'Rebuild a classic game' },
+                  ] as const).map(({ key, emoji, label, desc }) => {
+                    const isClone = key === 'clone'
+                    const isActive = isClone
+                      ? inputMode === 'clone'
+                      : preferredTemplate === key && inputMode !== 'clone'
+                    const activeClass = isActive
+                      ? key === 'shooter' ? 'bg-red-900/60 border-red-600 text-white'
+                      : key === 'topdown' ? 'bg-purple-900/60 border-purple-600 text-white'
+                      : key === 'clone'   ? 'bg-orange-900/60 border-orange-600 text-white'
+                      : 'bg-gray-600/80 border-gray-400 text-white'
+                      : 'bg-gray-800/60 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300'
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          if (isClone) {
+                            setInputMode('clone')
+                          } else {
+                            setPreferredTemplate(key as 'runner' | 'topdown' | 'shooter')
+                            setInputMode('simple')
+                          }
+                        }}
+                        className={`flex flex-col items-center p-3 rounded-xl text-center transition-all border ${activeClass}`}
+                      >
+                        <span className="text-2xl mb-1">{emoji}</span>
+                        <span className="text-xs font-semibold">{label}</span>
+                        <span className="text-[10px] text-gray-500 mt-0.5 leading-tight">{desc}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-center text-gray-600 text-[10px] mt-3">Then describe your game below ↓</p>
               </div>
             )}
 
