@@ -86,14 +86,16 @@ Vocabulary: detect these styles from the user's words and apply automatically:
 Shooter template rules (only when template === "shooter"):
 - Include an optional "shooter" sub-object with these optional params: { wallCount, heroHp, enemyHp, fireRate, enemyFireRate, maxEnemies, projectileSpeed }
 - Default shooter config (omit field for default): wallCount=6, heroHp=3, enemyHp=2, fireRate=500, enemyFireRate=2000, maxEnemies=4, projectileSpeed=450
+- ALWAYS assign heroSpriteId and enemySpriteId for shooter games — human/realistic sprites look far better than emoji in top-down combat
+- Default shooter sprite assignment (use when no specific theme is given): heroSpriteId: "hero-soldier", enemySpriteId: "enemy-hitman", bgId: "bg-kenney-dark"
 - "paintball" theme → heroSpriteId: "hero-soldier", enemySpriteId: "enemy-guard", heroEmoji: "🧑", enemyEmoji: "🎭", bgId: "bg-concrete", backgroundColor: "#5a5a5a"
 - "outdoor paintball" theme → heroSpriteId: "hero-survivor", enemySpriteId: "enemy-guard", heroEmoji: "🧑", enemyEmoji: "🎭", bgId: "bg-grass-td", backgroundColor: "#3d6d30"
 - "laser tag" theme → heroSpriteId: "hero-trooper", enemySpriteId: "enemy-hitman", heroEmoji: "🤖", enemyEmoji: "👾", bgId: "bg-kenney-teal", backgroundColor: "#1a2a3a"
 - "zombie shooter" theme → heroSpriteId: "hero-soldier", enemySpriteId: "enemy-zombie", heroEmoji: "🧑", enemyEmoji: "🧟", bgId: "bg-kenney-dark", backgroundColor: "#1a1a1a"
-- "space battle" theme → heroSpriteId: "hero-astronaut", enemySpriteId: "enemy-alien", heroEmoji: "🚀", enemyEmoji: "👽", bgId: "bg-space", backgroundColor: "#0a0a1e"
+- "space battle" theme → heroSpriteId: "hero-trooper", enemySpriteId: "enemy-alien", heroEmoji: "🚀", enemyEmoji: "👽", bgId: "bg-space", backgroundColor: "#0a0a1e"
 - "castle/knight" theme → heroSpriteId: "hero-knight", enemySpriteId: "enemy-dragon", bgId: "bg-dungeon"
 - "wood/indoor" theme → bgId: "bg-wood-floor", backgroundColor: "#6a4a1a"
-- "desert/sand" theme → heroSpriteId: "hero-survivor", bgId: "bg-kenney-sand", backgroundColor: "#9a7840"
+- "desert/sand" theme → heroSpriteId: "hero-survivor", enemySpriteId: "enemy-guard", bgId: "bg-kenney-sand", backgroundColor: "#9a7840"
 
 Background selection by template (IMPORTANT — pick bgId that matches the view):
 - Runner games (side-scrolling): use bg-sky, bg-forest, bg-desert, bg-space; NEVER use bg-concrete, bg-grass-td, bg-wood-floor, bg-metal, bg-sand-td, bg-kenney-*

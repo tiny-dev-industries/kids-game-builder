@@ -393,9 +393,12 @@
 
         // ── Preload sprites when catalog IDs are set ──────────────────────────
         preload() {
-          if (config.heroSpriteId)  this.load.image('hero-spr',  '/assets/characters/' + config.heroSpriteId  + '.svg');
-          if (config.enemySpriteId) this.load.image('enemy-spr', '/assets/characters/' + config.enemySpriteId + '.svg');
-          if (config.bgId)          this.load.image('bg-tile',   '/assets/backgrounds/' + config.bgId         + '.svg');
+          if (config.heroSpriteUrl)  this.load.image('hero-spr',  config.heroSpriteUrl);
+          else if (config.heroSpriteId)  this.load.image('hero-spr',  '/assets/characters/' + config.heroSpriteId  + '.svg');
+          if (config.enemySpriteUrl) this.load.image('enemy-spr', config.enemySpriteUrl);
+          else if (config.enemySpriteId) this.load.image('enemy-spr', '/assets/characters/' + config.enemySpriteId + '.svg');
+          if (config.bgUrl)          this.load.image('bg-tile',   config.bgUrl);
+          else if (config.bgId)          this.load.image('bg-tile',   '/assets/backgrounds/' + config.bgId         + '.svg');
         }
 
         create() {
@@ -663,9 +666,12 @@
 
         // ── Preload sprites when catalog IDs are set ──────────────────────────
         preload() {
-          if (config.heroSpriteId)  this.load.image('hero-spr',  '/assets/characters/' + config.heroSpriteId  + '.svg');
-          if (config.enemySpriteId) this.load.image('enemy-spr', '/assets/characters/' + config.enemySpriteId + '.svg');
-          if (config.bgId)          this.load.image('bg-tile',   '/assets/backgrounds/' + config.bgId         + '.svg');
+          if (config.heroSpriteUrl)  this.load.image('hero-spr',  config.heroSpriteUrl);
+          else if (config.heroSpriteId)  this.load.image('hero-spr',  '/assets/characters/' + config.heroSpriteId  + '.svg');
+          if (config.enemySpriteUrl) this.load.image('enemy-spr', config.enemySpriteUrl);
+          else if (config.enemySpriteId) this.load.image('enemy-spr', '/assets/characters/' + config.enemySpriteId + '.svg');
+          if (config.bgUrl)          this.load.image('bg-tile',   config.bgUrl);
+          else if (config.bgId)          this.load.image('bg-tile',   '/assets/backgrounds/' + config.bgId         + '.svg');
         }
 
         create() {
@@ -879,9 +885,12 @@
         constructor() { super({ key: 'ShooterScene' }); }
 
         preload() {
-          if (config.heroSpriteId)  this.load.image('hero-spr',  '/assets/characters/' + config.heroSpriteId  + '.svg');
-          if (config.enemySpriteId) this.load.image('enemy-spr', '/assets/characters/' + config.enemySpriteId + '.svg');
-          if (config.bgId)          this.load.image('bg-tile',   '/assets/backgrounds/' + config.bgId         + '.svg');
+          if (config.heroSpriteUrl)  this.load.image('hero-spr',  config.heroSpriteUrl);
+          else if (config.heroSpriteId)  this.load.image('hero-spr',  '/assets/characters/' + config.heroSpriteId  + '.svg');
+          if (config.enemySpriteUrl) this.load.image('enemy-spr', config.enemySpriteUrl);
+          else if (config.enemySpriteId) this.load.image('enemy-spr', '/assets/characters/' + config.enemySpriteId + '.svg');
+          if (config.bgUrl)          this.load.image('bg-tile',   config.bgUrl);
+          else if (config.bgId)          this.load.image('bg-tile',   '/assets/backgrounds/' + config.bgId         + '.svg');
         }
 
         create() {

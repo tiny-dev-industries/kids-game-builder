@@ -644,7 +644,21 @@ export default function Home() {
   const sendConfigToGame = useCallback((config: GameConfig) => {
     const iframe = iframeRef.current
     if (iframe?.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'LOAD_CONFIG', config }, '*')
+      // Resolve sprite/background IDs → full URLs so game.html can load PNG + SVG assets
+      const enriched: GameConfig = { ...config }
+      if (config.heroSpriteId) {
+        const a = [...HERO_SPRITES, ...ENEMY_SPRITES].find(s => s.id === config.heroSpriteId)
+        if (a) enriched.heroSpriteUrl = a.url
+      }
+      if (config.enemySpriteId) {
+        const a = [...HERO_SPRITES, ...ENEMY_SPRITES].find(s => s.id === config.enemySpriteId)
+        if (a) enriched.enemySpriteUrl = a.url
+      }
+      if (config.bgId) {
+        const a = BG_ASSETS.find(b => b.id === config.bgId)
+        if (a) enriched.bgUrl = a.url
+      }
+      iframe.contentWindow.postMessage({ type: 'LOAD_CONFIG', config: enriched }, '*')
     }
   }, [])
 

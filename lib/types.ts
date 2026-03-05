@@ -55,9 +55,12 @@ export interface GameConfig {
   template: 'runner' | 'topdown' | 'shooter'
   heroEmoji: string
   heroSpriteId?: string    // catalog asset ID — overrides emoji rendering when set
+  heroSpriteUrl?: string   // resolved full URL (injected by page.tsx, supports PNG + SVG)
   enemyEmoji: string
   enemySpriteId?: string   // catalog asset ID — overrides emoji rendering when set
+  enemySpriteUrl?: string  // resolved full URL (injected by page.tsx, supports PNG + SVG)
   bgId?: string            // catalog background tile ID
+  bgUrl?: string           // resolved full URL (injected by page.tsx, supports PNG + SVG)
   backgroundColor: string
   groundColor: string
   title: string
