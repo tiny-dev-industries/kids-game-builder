@@ -1,6 +1,6 @@
 # Kids Game Builder — Feature Registry
 
-_Current version: **v1.0.0** | Production: https://kids-game-builder.vercel.app_
+_Current version: **v1.0.2** | Production: https://kids-game-builder.vercel.app_
 
 ## Legend
 ✅ Implemented &nbsp; 🚧 In Progress &nbsp; ⏳ Planned &nbsp; ❌ Dropped
@@ -197,10 +197,48 @@ _Current version: **v1.0.0** | Production: https://kids-game-builder.vercel.app_
 
 ---
 
+## M10.1 — Shooter Bug Fixes + UX (v1.0.1)
+
+| Status | Feature | Key Files |
+|--------|---------|-----------|
+| ✅ | Enemy patrol wall collision — `resolveWallCollision()` now called in all 4 enemy states | `public/game.html` (updateEnemy patrol branch) |
+| ✅ | Hero rotation + aim indicator — hero sprite rotates toward mouse; yellow dot at 26px offset | `public/game.html` (heroGunIndicator graphics, setRotation, lastFacingX/Y) |
+| ✅ | Rapid fire pill — 100ms option added; AI fire rate clamp lowered from 200ms to 80ms | `app/page.tsx` (fire speed pills), `lib/ai.ts` |
+| ✅ | Checkerboard floor — when no bgId, draws 56×56 alternating brightness tiles over bg color | `public/game.html` (ShooterScene create, checkerboard loop) |
+| ✅ | Template picker — 2×2 card grid (🏃 Runner / ⬆️ Top-Down / 🔫 Shooter / 🕹️ Clone) shown in empty chat state | `app/page.tsx` (template picker grid) |
+| ✅ | Template-specific textarea placeholder text | `app/page.tsx` (getPlaceholder function) |
+| ✅ | Clone card in template picker auto-switches `inputMode` to 'clone' | `app/page.tsx` |
+
+---
+
+## M10.2 — Kenney Asset Library (v1.0.2)
+
+| Status | Feature | Key Files |
+|--------|---------|-----------|
+| ✅ | 5 new top-down SVG floor tiles: Concrete, Grass (aerial), Wood Floor, Metal, Sand | `public/assets/backgrounds/bg-concrete.svg` etc. |
+| ✅ | 5 Kenney PNG floor tiles (CC0, 64×64): grass, light, dark, teal, sand | `public/assets/backgrounds/bg-kenney-*.png` |
+| ✅ | 9 Kenney PNG character sprites (CC0, top-down): 5 heroes + 4 enemies | `public/assets/characters/hero-*.png`, `enemy-*.png` |
+| ✅ | `lib/assets.ts` template tags: runner/topdown/shooter scoping on all existing assets | `lib/assets.ts` |
+| ✅ | AI background selection by template — runner = side-scroll only; topdown/shooter = floor tiles only | `lib/ai.ts` (Background selection rule block) |
+| ✅ | Shooter always defaults to Kenney human sprites (soldier+hitman) — realistic overhead look | `lib/ai.ts` (ALWAYS assign heroSpriteId rule) |
+| ✅ | PNG URL resolution fix — `sendConfigToGame()` injects `heroSpriteUrl`/`enemySpriteUrl`/`bgUrl` before postMessage | `app/page.tsx` (sendConfigToGame), `lib/types.ts` |
+| ✅ | All 3 Phaser scenes use resolved URL first, fall back to old `id + .svg` pattern | `public/game.html` (preload in all 3 scenes) |
+| ✅ | Kenney char/bg combos added to AI: paintball→soldier+guard, zombie→survivor+zombie, laser tag→trooper+hitman | `lib/ai.ts` |
+
+---
+
 ## Planned / Future
 
 | Status | Feature | Notes |
 |--------|---------|-------|
+| ⏳ | **Grenade system** — `E` key to throw, arcs over walls (skips wall collision), timer-based detonation | Shooter building block; see `docs/architecture.md` |
+| ⏳ | Frag grenade — explosion radius damage (90px), ring flash effect | ShooterConfig `grenadeType: 'frag'` |
+| ⏳ | Smoke grenade — semi-transparent cloud (r=80, 8s), modifies `hasLOS()` return value | ShooterConfig `grenadeType: 'smoke'` |
+| ⏳ | Flashbang — white screen flash, enemy `blindedUntil` timestamp forces patrol state | ShooterConfig `grenadeType: 'flash'` |
+| ⏳ | Slow-motion grenade — multiplies `dt` by 0.25 for 4s, hero speed preserved | ShooterConfig `grenadeType: 'slow'` |
+| ⏳ | Fog of war — dark overlay + `GeometryMask` visibility circle around hero | ShooterConfig `fogOfWar: true`, `fogRadius: number` |
+| ⏳ | Health pack collectibles | Shooter building block |
+| ⏳ | Ricochet bullets, shotgun spread, homing projectiles | Shooter building blocks |
 | ⏳ | Save / share game URL | Serialize GameConfig to URL params or short link |
 | ⏳ | More game templates (platformer, racing, tower defense) | M11+ candidates |
 | ⏳ | More action types (boss wave, time limit, checkpoint) | M7 candidate |
