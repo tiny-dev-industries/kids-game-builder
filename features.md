@@ -1,6 +1,6 @@
 # Kids Game Builder — Feature Registry
 
-_Current version: **v1.0.2** | Production: https://kids-game-builder.vercel.app_
+_Current version: **v1.0.3** | Production: https://kids-game-builder.vercel.app_
 
 ## Legend
 ✅ Implemented &nbsp; 🚧 In Progress &nbsp; ⏳ Planned &nbsp; ❌ Dropped
@@ -227,10 +227,10 @@ _Current version: **v1.0.2** | Production: https://kids-game-builder.vercel.app_
 
 ---
 
-## Planned / Future
+## M10.3 — Combat Depth + Polish (v1.0.3)
 
-| Status | Feature | Notes |
-|--------|---------|-------|
+| Status | Feature | Key Files |
+|--------|---------|-----------|
 | ✅ | **Grenade system** — `E` key to throw, arcs over walls (no collision), 1.6s fuse, parabolic arc visual | `public/game.html` (spawnGrenade, updateGrenades, detonateGrenade) |
 | ✅ | Frag grenade — 90px explosion blast + ring flash, damages all enemies in radius | `public/game.html` (detonateFrag) |
 | ✅ | Smoke grenade — gray cloud (r=80, 8s) blocks `hasLOS()` for both hero and enemies | `public/game.html` (detonateSmoke, hasLOS smoke check) |
@@ -239,8 +239,25 @@ _Current version: **v1.0.2** | Production: https://kids-game-builder.vercel.app_
 | ✅ | Fog of war — dark overlay + `GeometryMask` visibility circle (default r=180) around hero | `public/game.html` (FOG_OF_WAR setup in create, updateFog) |
 | ✅ | Grenade ammo HUD — top-center `💣 ×3` counter; type-specific icon | `public/game.html` (grenadeTxt) |
 | ✅ | Grenade style chips — `💣 Add Grenades`, `💨 Smoke Grenades`, `🌑 Fog of War` shown contextually | `app/page.tsx` (styleChips) |
-| ⏳ | Health pack collectibles | Shooter building block |
-| ⏳ | Ricochet bullets, shotgun spread, homing projectiles | Shooter building blocks |
+| ✅ | **HUD above fog** — all HUD elements (score, hearts, grenade counter) moved to depth 56 (above fog at 52) | `public/game.html` (setDepth in create + buildHpHUD) |
+| ✅ | Grenade speed 200→320 px/s — faster, more responsive throw | `public/game.html` (spawnGrenade spd) |
+| ✅ | Frag/flash grenades affect hero — frag self-damage at close range; flashbang disorients hero controls for 1.5s | `public/game.html` (detonateFrag, detonateFlash, heroDisorientedUntil) |
+| ✅ | Enemy grenades — enemies in `shoot` state can throw grenades (same type) on 5s cooldown | `public/game.html` (spawnEnemyGrenade, ENEMY_GRENADES) |
+| ✅ | **Pickup system** — health packs (❤️) and grenade packs (📦) scattered in arena; float-bob animation, 18s respawn | `public/game.html` (spawnPickup, updatePickups, heroHeal) |
+| ✅ | **Weapon pickups** — machinegun/shotgun/sniper floor drops with 20s respawn; pick-up banner; shotgun = 5-pellet spread; sniper = 3× damage | `public/game.html` (spawnWeapon, updateWeaponPickups, tryHeroShoot weapon dispatch) |
+| ✅ | **Enemy health bars** — animated HP bar above each enemy (green→yellow→red), hidden at full HP | `public/game.html` (hpBar graphics in spawnEnemy, drawn in updateEnemy) |
+| ✅ | **Enemy type variance** — grunt/heavy/scout/sniper archetypes; heavy 2× HP, slower; scout 1 HP, fast, doesn't shoot; sniper low fire rate; visual scale/tint per type | `public/game.html` (ETYPE_STATS, spawnEnemy type dispatch) |
+| ✅ | **Wall/cover redesign** — zoned layout: guaranteed center T-shape + 1 quadrant anchor per zone when wallCount≥8; random fill for remainder | `public/game.html` (generateWalls rewrite) |
+| ✅ | New style chips — `🔫 Weapon Pickups`, `👥 Mixed Enemies`, `💥 Enemy Grenades` | `app/page.tsx` (styleChips) |
+| ✅ | `ShooterConfig` extended — `healthPickups`, `grenadePickups`, `weaponPickups`, `enemyGrenades`, `enemyTypes` | `lib/types.ts` |
+| ✅ | AI vocabulary — all new features mapped to natural language prompts | `lib/ai.ts` |
+
+## Planned / Future
+
+| Status | Feature | Notes |
+|--------|---------|-------|
+| ⏳ | Ricochet bullets, homing projectiles | Shooter building blocks |
+| ⏳ | Boss enemy / wave system | M11 candidate |
 | ⏳ | Save / share game URL | Serialize GameConfig to URL params or short link |
 | ⏳ | More game templates (platformer, racing, tower defense) | M11+ candidates |
 | ⏳ | More action types (boss wave, time limit, checkpoint) | M7 candidate |

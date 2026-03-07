@@ -84,7 +84,7 @@ Vocabulary: detect these styles from the user's words and apply automatically:
 - "shooter" + "lots of enemies" → template: "shooter", shooter: { maxEnemies: 6 }
 
 Shooter template rules (only when template === "shooter"):
-- Include an optional "shooter" sub-object with these optional params: { wallCount, heroHp, enemyHp, fireRate, enemyFireRate, maxEnemies, projectileSpeed, grenadeType, grenadeCount, grenadeCooldown, fogOfWar, fogRadius }
+- Include an optional "shooter" sub-object with these optional params: { wallCount, heroHp, enemyHp, fireRate, enemyFireRate, maxEnemies, projectileSpeed, grenadeType, grenadeCount, grenadeCooldown, fogOfWar, fogRadius, healthPickups, grenadePickups, weaponPickups, enemyGrenades, enemyTypes }
 - Default shooter config (omit field for default): wallCount=6, heroHp=3, enemyHp=2, fireRate=500, enemyFireRate=2000, maxEnemies=4, projectileSpeed=450
 - Grenade types (E key to throw, arcs over walls, timer-based detonation):
   - grenadeType:"frag" → explosion blast radius, damages enemies (default grenadeCount:3)
@@ -102,6 +102,19 @@ Shooter template rules (only when template === "shooter"):
   - "fog of war" / "limited visibility" / "dark map" / "can't see enemies" → fogOfWar:true
   - "small vision" / "tight visibility" → fogOfWar:true, fogRadius:120
 - Great combos: zombie fog of war → fogOfWar:true + grenadeType:"flash"; stealth → fogOfWar:true + grenadeType:"smoke"
+- Pickup vocabulary:
+  - "health packs" / "medkits" / "health pickups" → healthPickups:true (default true; omit for default)
+  - "no health packs" / "no healing" → healthPickups:false
+  - "weapon pickups" / "grab weapons" / "weapon drops" / "pick up guns" → weaponPickups:true
+  - "grenade pickups" / "ammo resupply" → grenadePickups:true (also requires grenadeType to be set)
+- Enemy grenades vocabulary (requires grenadeType to be set):
+  - "enemies throw grenades" / "enemy grenades" / "enemies have grenades" → enemyGrenades:true
+- Enemy type vocabulary:
+  - "mixed enemies" / "different enemy types" / "enemy variety" → enemyTypes:["grunt","heavy","scout"]
+  - "heavy enemies" / "tank enemies" / "armored enemies" / "tough enemies with guns" → enemyTypes:["grunt","heavy"]
+  - "fast enemies" / "scouts" / "quick enemies" / "speedy enemies" → enemyTypes:["grunt","scout"]
+  - "sniper enemies" / "long range enemies" / "enemies that hang back" → enemyTypes:["grunt","sniper"]
+  - "all enemy types" / "full variety" / "every enemy type" → enemyTypes:["grunt","heavy","scout","sniper"]
 - ALWAYS assign heroSpriteId and enemySpriteId for shooter games — human/realistic sprites look far better than emoji in top-down combat
 - Default shooter sprite assignment (use when no specific theme is given): heroSpriteId: "hero-soldier", enemySpriteId: "enemy-hitman", bgId: "bg-kenney-dark"
 - "paintball" theme → heroSpriteId: "hero-soldier", enemySpriteId: "enemy-guard", heroEmoji: "🧑", enemyEmoji: "🎭", bgId: "bg-concrete", backgroundColor: "#5a5a5a"
@@ -212,6 +225,17 @@ Shooter template update rules (only when template === "shooter"):
 - "remove fog" / "no fog" → set shooter.fogOfWar: false
 - "smaller vision" / "tighter fog" → set shooter.fogRadius: 120
 - "bigger vision" / "wider sight" → set shooter.fogRadius: 240
+- "add health pickups" / "add medkits" / "add health packs" → set shooter.healthPickups: true
+- "remove health pickups" / "no health packs" / "no healing" → set shooter.healthPickups: false
+- "add weapon pickups" / "weapon drops" / "pick up weapons" / "grab guns" → set shooter.weaponPickups: true
+- "remove weapon pickups" / "no weapon drops" → set shooter.weaponPickups: false
+- "give enemies grenades" / "enemies throw grenades" / "enemy grenades" → set shooter.enemyGrenades: true
+- "remove enemy grenades" / "no enemy grenades" → set shooter.enemyGrenades: false
+- "add heavy enemies" / "tank enemies" / "armored enemies" → set shooter.enemyTypes: ["grunt","heavy"]
+- "add fast enemies" / "add scouts" / "speedy enemies" → set shooter.enemyTypes: ["grunt","scout"]
+- "add snipers" / "sniper enemies" / "long range enemies" → set shooter.enemyTypes: ["grunt","sniper"]
+- "all enemy types" / "mixed enemies" / "full enemy variety" → set shooter.enemyTypes: ["grunt","heavy","scout","sniper"]
+- "reset enemy types" / "normal enemies" / "only grunts" → set shooter.enemyTypes: ["grunt"]
 - Always preserve shooter fields not mentioned by the kid
 - groundColor: always keep as "#5a8a5a"
 - jumpForce: always keep as 580

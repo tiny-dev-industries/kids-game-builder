@@ -1,7 +1,7 @@
 # Kids Game Builder — Architecture Reference
 
 > **Purpose:** Research-first doc. Read this before opening source files.
-> Last updated: v1.0.2
+> Last updated: v1.0.3
 
 ---
 
@@ -76,6 +76,11 @@ interface GameConfig {
 | `grenadeCooldown` | 3000ms | ms | Time between throws |
 | `fogOfWar` | — | boolean | Dark map, visibility circle around hero |
 | `fogRadius` | 180 | px | Visibility circle radius |
+| `healthPickups` | true | boolean | Spawn health packs (❤️) in arena |
+| `grenadePickups` | true\* | boolean | Spawn grenade ammo packs (\*when grenadeType set) |
+| `weaponPickups` | false | boolean | Weapon floor drops (machinegun/shotgun/sniper) |
+| `enemyGrenades` | false | boolean | Enemies throw grenades (requires grenadeType) |
+| `enemyTypes` | ['grunt'] | array | Mix of: grunt/heavy/scout/sniper |
 
 ### GameDifficulty (`lib/types.ts`) — runner/topdown only
 
@@ -117,26 +122,41 @@ interface GameConfig {
 
 ### Key Constants (set in `create()` from `config.shooter`)
 ```
-HERO_RADIUS = 18      ENEMY_RADIUS = 16     BULLET_RADIUS = 5
-HERO_SPEED = 220      PROJ_SPEED = 450      FIRE_RATE = 500ms
-HERO_HP = 3           ENEMY_HP = 2          MAX_ENEMIES = 4
-WALL_COUNT = 6        ENEMY_FIRE_RATE = 2000ms
-W = 480               H = 640               (canvas dimensions)
+HERO_RADIUS = 18      ENEMY_RADIUS = 18 (default, per-enemy via e.radius)
+BULLET_RADIUS = 6     HERO_SPEED = 220   PROJ_SPEED = 450   FIRE_RATE = 500ms
+HERO_HP = 3           ENEMY_HP = 2       MAX_ENEMIES = 4    WALL_COUNT = 6
+ENEMY_FR_BASE = 2000ms                   W = 480            H = 640
+ENEMY_TYPES = ['grunt']   ETYPE_STATS = { grunt, heavy, scout, sniper }
 ```
 
 ### Data Structures
 ```javascript
-walls[]     = [{ x, y, w, h, obj }]         // wall rectangles (center x,y)
-bullets[]   = [{ x, y, vx, vy, fromEnemy, obj }]
-enemies[]   = [{ x, y, hp, maxHp, state, patrolZone,
-                 lastFacingX, lastFacingY, blindedUntil, shootTimer, obj }]
-grenades[]  = [{ x, y, vx, vy, fuse, fuseMax, obj, shadow }]
-smokeZones[]= [{ x, y, r, until, obj }]     // r=80px, 8s duration
+walls[]          = [{ x, y, w, h, obj }]
+bullets[]        = [{ x, y, vx, vy, fromEnemy, damage, obj }]
+enemies[]        = [{ x, y, hp, maxHp, eType, radius, state, patrolZone, patrolDir,
+                      patrolAxis, patrolSpeed, alertSpeed, shootsBack, frMult,
+                      shootTimer, grenadeTimer, lastFacingX, lastFacingY,
+                      blindedUntil, hpBar, obj }]
+grenades[]       = [{ x, y, vx, vy, fuse, fuseMax, obj, shadow, fromEnemy }]
+smokeZones[]     = [{ x, y, r, until, obj }]       // r=80px, 8s duration
+pickups[]        = [{ x, y, type, obj, labelObj, respawnAt }]  // 'health'|'grenade'
+weaponPickupObjs[]= [{ x, y, weaponId, obj, labelObj, respawnAt }]
 ```
 
+### Enemy Type Stats (ETYPE_STATS)
+| Type | HP | Radius | AlertSpd | PatrolSpd | Scale | Tint | Shoots | FireRateMult |
+|------|----|--------|----------|-----------|-------|------|--------|--------------|
+| grunt | ENEMY_HP | 16 | 95 | 55–90 | 1.0 | — | yes | 1.0 |
+| heavy | ENEMY_HP×2 | 20 | 65 | 35–50 | 1.3 | 0xcc8844 | yes | 1.5 |
+| scout | 1 | 13 | 140 | 80–110 | 0.8 | — | no | — |
+| sniper | ENEMY_HP+1 | 16 | 50 | 30–50 | 1.0 | 0x8888ff | yes | 0.5 |
+
 ### Wall Generation (`generateWalls`)
-3 random wall types: horizontal bar (80–140w × 20h), vertical bar (20w × 80–140h),
-L-shape (combo). Clears center spawn zone (110px radius). Stored as `{ x, y, w, h, obj }`.
+**Zoned layout algorithm (v1.0.3):**
+- `WALL_COUNT ≥ 4`: Center T-shape anchor always placed (90–120w horizontal + 50–80h stem)
+- `WALL_COUNT ≥ 8`: 1 cluster per quadrant (TL/TR/BL/BR) for guaranteed coverage
+- Remaining slots: random placement (3 types: horizontal/vertical/L-shape)
+- All slots avoid center spawn zone (110px radius)
 
 ### Wall Collision (`resolveWallCollision(cx, cy, r)`)
 Returns `{ x, y }` with circle pushed out of any overlapping wall AABB using nearest-point
@@ -153,13 +173,16 @@ intersects. Used by:
 
 ### Projectile System
 ```
-spawnBullet(x, y, vx, vy, fromEnemy)   → adds to bullets[]
-updateBullets(dt)                        → moves all bullets; checks wall/hero/enemy hit
-splatEffect(x, y, color)                → small colored dot tween on impact
-tryHeroShoot(targetX, targetY)           → rate-limited; fires toward mouse position
+spawnBullet(x, y, vx, vy, fromEnemy, damage)  → adds to bullets[] (damage default 1)
+updateBullets(dt)                              → moves all bullets; checks wall/hero/enemy hit
+splatEffect(x, y, color)                      → small colored dot tween on impact
+tryHeroShoot(targetX, targetY)                 → dispatches on currentWeapon:
+  pistol:     1 bullet straight, FIRE_RATE cooldown
+  machinegun: 1 bullet straight, 100ms cooldown
+  shotgun:    5 bullets ±20° fan, 700ms cooldown, 1 damage each
+  sniper:     1 bullet 1.8× speed, 1000ms cooldown, 3 damage
 ```
-Bullets: hero = blue (0x33aaff), enemy = red (0xff4433). Removed on: off-screen, wall hit,
-entity hit.
+Bullets: hero = blue (0x33aaff), enemy = red (0xff4433). `b.damage` used in `enemyTakeHit(e, b.damage)`.
 
 ### Enemy AI State Machine (`updateEnemy(e, dt)`)
 
@@ -175,9 +198,9 @@ entity hit.
 
 | State | Speed | Behavior |
 |-------|-------|----------|
-| `patrol` | 55–90 | Bounces within `patrolZone` on random axis |
-| `alert` | 95 | Moves toward hero |
-| `shoot` | 0 | Stationary; fires at `currentEnemyFireRate`; may seek cover if damaged |
+| `patrol` | e.patrolSpeed (55–90) | Bounces within `patrolZone` on random axis |
+| `alert` | e.alertSpeed (50–140) | Moves toward hero (speed varies by enemy type) |
+| `shoot` | 0 | Stationary; fires at `currentEnemyFireRate × e.frMult`; scouts skip this state |
 | `cover` | 110 | Moves to `coverTarget` (wall edge not visible to hero) |
 
 `findCoverPoint()` samples wall edges → returns point where `!hasLOS(hero, pt)`.
@@ -191,15 +214,41 @@ wander randomly at 55px/s, skip all LOS checks, occasionally pick new random dir
 
 ### Update Loop Order
 1. Early-exit if `isGameOver`
-2. `dt = delta / 1000`  ← ⏳ slow-mo grenade multiplies this by 0.25
+2. `dt = delta / 1000`; `gameDt = dt × 0.25` if `slowUntil` active
 3. `updateDifficultyRamp(delta)`
 4. Aim tracking → hero rotation → gun indicator dot
-5. Hero movement → `resolveWallCollision()`
-6. Hero shoot input (SPACE / mouse held)
-7. `updateEnemy(e, dt)` for each enemy (reverse iteration)
-8. `updateBullets(gameDt)` ← enemies + bullets use `gameDt` (0.25× during slow-mo)
-9. `updateGrenades(dt)` — if GRENADE_TYPE (grenades fly at real-time speed; also expires smoke zones)
-10. `updateFog()` — if FOG_OF_WAR (redraws GeometryMask circle at hero position each frame)
+5. Hero movement (inverted if `heroDisorientedUntil` active from flashbang) → `resolveWallCollision()`
+6. Hero shoot input (SPACE / mouse held) — dispatches via `currentWeapon`
+7. `updateEnemy(e, gameDt)` for each enemy → also draws hpBar each frame
+8. `updateBullets(gameDt)` — uses `e.radius` for collision, `b.damage` for HP reduction
+9. `updateGrenades(dt)` — if GRENADE_TYPE; enemy grenades thrown from `updateEnemy()` shoot state
+10. `updateFog()` — if FOG_OF_WAR
+11. `updatePickups()` — health/grenade pickup collection + respawn
+12. `updateWeaponPickups()` — if WEAPON_PICKUPS; weapon floor drop collection + respawn + banner
+
+### Depth Layers (Phaser `setDepth`)
+| Depth | Object |
+|-------|--------|
+| -2 | Background tile sprite |
+| -1 | Checkerboard floor graphics |
+| 0 | Arena border |
+| 3 | Walls |
+| 4 | Enemy sprites |
+| 5 | Hero sprite |
+| 6 | Hero gun indicator + grenade shadows |
+| 7 | Pickup circles |
+| 8 | Pickup labels + weapon pickup circles |
+| 8 | Bullets |
+| 9 | Grenade objects + splat effects |
+| 11 | Smoke zones |
+| 12 | Enemy HP bars |
+| 20 | Frag explosion rings |
+| 51 | Slow-mo blue overlay |
+| 52 | Fog of war overlay |
+| 53 | Flash disorientation yellow tint |
+| 56 | **All HUD elements** (score, hearts, grenade counter, title, hint) |
+| 57 | Weapon pickup banners |
+| 100 | Flashbang white overlay |
 
 ### Background Rendering
 - With `bgUrl` / `bgId`: `add.tileSprite(W/2, H/2, W, H, 'bg-tile')` — scrolls or tiles

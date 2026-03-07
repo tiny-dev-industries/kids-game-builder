@@ -47,6 +47,15 @@ export interface ShooterConfig {
   // ── Fog of war ─────────────────────────────────────────────────────────────
   fogOfWar?:        boolean  // dark map with visibility circle around hero
   fogRadius?:       number   // visibility radius in px, default 180
+  // ── Pickups ────────────────────────────────────────────────────────────────
+  healthPickups?:   boolean  // spawn health pack collectibles (default true)
+  grenadePickups?:  boolean  // spawn grenade ammo packs (default true when grenadeType set)
+  // ── Weapon progression ─────────────────────────────────────────────────────
+  weaponPickups?:   boolean  // enable weapon floor pickups (machinegun/shotgun/sniper)
+  // ── Enemy grenades ─────────────────────────────────────────────────────────
+  enemyGrenades?:   boolean  // enemies throw grenades (uses same grenadeType)
+  // ── Enemy variety ──────────────────────────────────────────────────────────
+  enemyTypes?:      ('grunt' | 'heavy' | 'scout' | 'sniper')[]  // default ['grunt']
 }
 
 export interface GameDifficulty {

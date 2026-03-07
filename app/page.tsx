@@ -840,16 +840,22 @@ export default function Home() {
     const template = currentConfig?.template
     const hasDuckObstacles = (currentConfig?.difficulty?.lowObstacleChance ?? 0) > 0
     if (template === 'shooter') {
-      const hasGrenade = !!(currentConfig?.shooter as any)?.grenadeType
-      const hasFog     = !!(currentConfig?.shooter as any)?.fogOfWar
+      const sc           = (currentConfig?.shooter as any) || {}
+      const hasGrenade   = !!sc.grenadeType
+      const hasFog       = !!sc.fogOfWar
+      const hasWeapons   = !!sc.weaponPickups
+      const hasEnemyVary = !!(sc.enemyTypes && sc.enemyTypes.length > 1)
       return [
-        { label: '🧱 More Cover',      prompt: 'add more walls and obstacles' },
-        { label: '🔫 Rapid Fire',      prompt: 'make it rapid fire' },
-        { label: '💀 Tougher Enemies', prompt: 'make enemies tougher and shoot faster' },
-        ...(!hasGrenade ? [{ label: '💣 Add Grenades',   prompt: 'add grenades I can throw with the E key' }] : []),
-        ...(hasGrenade  ? [{ label: '💨 Smoke Grenades', prompt: 'switch to smoke grenades that block enemy vision' }] : []),
-        ...(!hasFog     ? [{ label: '🌑 Fog of War',     prompt: 'add fog of war — dark map with limited visibility' }] : []),
-        { label: '🏃 Go Runner',       prompt: 'switch to a runner game' },
+        { label: '🧱 More Cover',       prompt: 'add more walls and obstacles' },
+        { label: '🔫 Rapid Fire',       prompt: 'make it rapid fire' },
+        { label: '💀 Tougher Enemies',  prompt: 'make enemies tougher and shoot faster' },
+        ...(!hasGrenade  ? [{ label: '💣 Add Grenades',    prompt: 'add grenades I can throw with the E key' }] : []),
+        ...(hasGrenade   ? [{ label: '💨 Smoke Grenades',  prompt: 'switch to smoke grenades that block enemy vision' }] : []),
+        ...(!hasFog      ? [{ label: '🌑 Fog of War',      prompt: 'add fog of war — dark map with limited visibility' }] : []),
+        ...(!hasWeapons  ? [{ label: '🔫 Weapon Pickups',  prompt: 'add weapon pickups: machine gun, shotgun, and sniper rifle' }] : []),
+        ...(!hasEnemyVary? [{ label: '👥 Mixed Enemies',   prompt: 'add mixed enemy types: fast scouts, armored heavies, and snipers' }] : []),
+        ...(hasGrenade   ? [{ label: '💥 Enemy Grenades',  prompt: 'give enemies grenades too so they throw back at me' }] : []),
+        { label: '🏃 Go Runner',        prompt: 'switch to a runner game' },
       ]
     } else if (template === 'topdown') {
       return [

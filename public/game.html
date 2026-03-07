@@ -886,6 +886,19 @@
       var GRENADE_CD     = Math.max(500, SC.grenadeCooldown || 3000);
       var FOG_OF_WAR     = SC.fogOfWar === true;
       var FOG_RADIUS     = Math.max(60, Math.min(300, SC.fogRadius || 180));
+      // ── New building-block constants ─────────────────────────────────────────
+      var HEALTH_PICKUPS   = SC.healthPickups  !== false;
+      var GRENADE_PICKUPS  = !!(GRENADE_TYPE && SC.grenadePickups !== false);
+      var WEAPON_PICKUPS   = SC.weaponPickups  === true;
+      var ENEMY_GRENADES   = !!(GRENADE_TYPE && SC.enemyGrenades  === true);
+      var ENEMY_GRENADE_CD = 5000; // ms between enemy grenade throws
+      var ENEMY_TYPES      = (SC.enemyTypes && SC.enemyTypes.length) ? SC.enemyTypes : ['grunt'];
+      var ETYPE_STATS = {
+        grunt:  { hp: ENEMY_HP,       radius: 16, alertSpd: 95,  patrolMin: 55, patrolMax: 90,  scale: 1.0, tint: -1,       shootsBack: true,  frMult: 1.0 },
+        heavy:  { hp: ENEMY_HP * 2,   radius: 20, alertSpd: 65,  patrolMin: 35, patrolMax: 50,  scale: 1.3, tint: 0xcc8844, shootsBack: true,  frMult: 1.5 },
+        scout:  { hp: 1,              radius: 13, alertSpd: 140, patrolMin: 80, patrolMax: 110, scale: 0.8, tint: -1,       shootsBack: false, frMult: 1.0 },
+        sniper: { hp: ENEMY_HP + 1,   radius: 16, alertSpd: 50,  patrolMin: 30, patrolMax: 50,  scale: 1.0, tint: 0x8888ff, shootsBack: true,  frMult: 0.5 },
+      };
 
       class ShooterScene extends Phaser.Scene {
         constructor() { super({ key: 'ShooterScene' }); }
@@ -912,11 +925,16 @@
           this.walls                = [];   // { x, y, w, h, obj }
           this.bullets              = [];   // { x, y, vx, vy, fromEnemy, obj }
           this.enemies              = [];   // { x, y, hp, maxHp, state, patrolZone, patrolDir, patrolAxis, patrolSpeed, shootTimer, lastFacingX, lastFacingY, blindedUntil, obj }
-          this.grenades             = [];   // { x, y, vx, vy, fuse, obj, shadow }
+          this.grenades             = [];   // { x, y, vx, vy, fuse, obj, shadow, fromEnemy }
           this.smokeZones           = [];   // { x, y, r, until, obj }
+          this.pickups              = [];   // { x, y, type, obj, labelObj, respawnAt }
+          this.weaponPickupObjs     = [];   // { x, y, weaponId, obj, labelObj, respawnAt }
           this.grenadeAmmo          = (GRENADE_COUNT === 0) ? Infinity : GRENADE_COUNT;
           this.lastGrenade          = 0;
           this.slowUntil            = 0;
+          this.heroDisorientedUntil = 0;
+          this.currentWeapon        = 'pistol';
+          this.currentFireRate      = FIRE_RATE;
           this.rampTimer            = 0;
           this.currentEnemyFireRate = ENEMY_FR_BASE;
           this.currentMaxEnemies    = MAX_ENEMIES;
@@ -985,17 +1003,17 @@
           // ── Score + Title ────────────────────────────────────────────────────
           this.scoreTxt = this.add.text(W-20, 20, 'Score: 0', {
             fontSize: '24px', color: '#fff', stroke: '#000', strokeThickness: 4,
-          }).setOrigin(1,0).setDepth(30);
+          }).setOrigin(1,0).setDepth(56);
           this.add.text(20, 20, config.title || 'Paintball!', {
             fontSize: '22px', color: '#fff', stroke: '#000', strokeThickness: 4,
-          }).setDepth(30);
+          }).setDepth(56);
           // ── Grenade ammo HUD ─────────────────────────────────────────────────
           if (GRENADE_TYPE) {
             var grenadeIcon = { frag: '💣', smoke: '💨', flash: '🔆', slow: '⏱️' }[GRENADE_TYPE] || '💣';
             this.grenadeTxt = this.add.text(W/2, 20,
               grenadeIcon + ' ×' + (this.grenadeAmmo === Infinity ? '∞' : this.grenadeAmmo), {
               fontSize: '20px', color: '#fff', stroke: '#000', strokeThickness: 3,
-            }).setOrigin(0.5, 0).setDepth(30);
+            }).setOrigin(0.5, 0).setDepth(56);
           }
 
           // ── Spawn initial enemies by zone ─────────────────────────────────
@@ -1003,6 +1021,11 @@
           for (var zi = 0; zi < this.currentMaxEnemies; zi++) {
             this.spawnEnemy(this.zones[zi % this.zones.length]);
           }
+
+          // ── Initial pickups + weapon drops ────────────────────────────────
+          if (HEALTH_PICKUPS)  this.spawnInitialPickups('health',  3);
+          if (GRENADE_PICKUPS) this.spawnInitialPickups('grenade', 2);
+          if (WEAPON_PICKUPS)  this.spawnInitialWeapons();
 
           // ── Keyboard ─────────────────────────────────────────────────────────
           this.cursors    = this.input.keyboard.createCursorKeys();
@@ -1040,11 +1063,11 @@
           }
 
           // ── Start hint ────────────────────────────────────────────────────────
-          var hintStr = 'WASD/arrows move · SPACE/click shoot' + (GRENADE_TYPE ? ' · E for grenade' : '') + ' · hold to move on mobile';
+          var hintStr = 'WASD/arrows move · SPACE/click shoot' + (GRENADE_TYPE ? ' · E throw' : '') + (WEAPON_PICKUPS ? ' · walk over weapons' : '') + ' · hold to move on mobile';
           var hint = this.add.text(W/2, H*0.92, hintStr, {
             fontSize: '15px', color: '#fff', stroke: '#000', strokeThickness: 3,
             backgroundColor: '#0009', padding: { x:10, y:5 },
-          }).setOrigin(0.5).setDepth(31);
+          }).setOrigin(0.5).setDepth(56);
           this.time.delayedCall(3500, function(){ if (hint && hint.active) hint.setAlpha(0); });
 
           window.parent.postMessage({ type: 'GAME_READY' }, '*');
@@ -1054,29 +1077,64 @@
 
         generateWalls() {
           var W = this.W, H = this.H;
-          var clearR = 110; // keep center spawn area clear
-          var margin = 50;
-          for (var i = 0; i < WALL_COUNT; i++) {
-            var placed = false;
-            for (var attempt = 0; attempt < 40 && !placed; attempt++) {
+          var clearR = 110;
+          var margin  = 50;
+          var placedCount = 0;
+          var self = this;
+
+          // Helper: place a random wall cluster at (wx, wy) using one of 3 types
+          function placeCluster(wx, wy) {
+            var rtype = Phaser.Math.Between(0, 2);
+            if (rtype === 0) {
+              var rw = Phaser.Math.Between(80, 130);
+              self.addWall(wx - rw/2, wy - 10, rw, 20);
+            } else if (rtype === 1) {
+              var rh = Phaser.Math.Between(80, 130);
+              self.addWall(wx - 10, wy - rh/2, 20, rh);
+            } else {
+              var aw = Phaser.Math.Between(60, 100);
+              var bh = Phaser.Math.Between(50, 90);
+              self.addWall(wx - aw/2, wy - 10, aw, 20);
+              self.addWall(wx - 10,   wy + 10,  20, bh);
+            }
+          }
+
+          // 1. Center T-shape anchor (always placed when WALL_COUNT >= 4)
+          if (WALL_COUNT >= 4) {
+            var hw = Phaser.Math.Between(90, 120);
+            var vh = Phaser.Math.Between(50, 80);
+            this.addWall(W/2 - hw/2, H/2 - 30, hw, 20); // horizontal bar
+            this.addWall(W/2 - 10,   H/2 - 10,  20, vh); // vertical stem
+            placedCount++;
+          }
+
+          // 2. One quadrant anchor per quadrant (when WALL_COUNT >= 8)
+          if (WALL_COUNT >= 8) {
+            var quadrants = [
+              { x: margin + 10,  y: margin + 10,  w: W/2 - margin - 30, h: H/2 - margin - 30 }, // TL
+              { x: W/2 + 20,     y: margin + 10,  w: W/2 - margin - 30, h: H/2 - margin - 30 }, // TR
+              { x: margin + 10,  y: H/2 + 20,     w: W/2 - margin - 30, h: H/2 - margin - 30 }, // BL
+              { x: W/2 + 20,     y: H/2 + 20,     w: W/2 - margin - 30, h: H/2 - margin - 30 }, // BR
+            ];
+            for (var q = 0; q < quadrants.length && placedCount < WALL_COUNT; q++) {
+              var qz = quadrants[q];
+              var qx = Phaser.Math.Between(qz.x + 20, qz.x + qz.w - 20);
+              var qy = Phaser.Math.Between(qz.y + 20, qz.y + qz.h - 20);
+              placeCluster(qx, qy);
+              placedCount++;
+            }
+          }
+
+          // 3. Random fill for remaining slots
+          var remaining = WALL_COUNT - placedCount;
+          for (var i = 0; i < remaining; i++) {
+            var found = false;
+            for (var attempt = 0; attempt < 40 && !found; attempt++) {
               var wx = Phaser.Math.Between(margin, W - margin);
               var wy = Phaser.Math.Between(margin, H - margin);
               if (Math.sqrt((wx-W/2)*(wx-W/2)+(wy-H/2)*(wy-H/2)) < clearR) continue;
-              var type = Phaser.Math.Between(0, 2);
-              if (type === 0) {
-                var ww = Phaser.Math.Between(80, 140), wh = 20;
-                this.addWall(wx - ww/2, wy - wh/2, ww, wh);
-              } else if (type === 1) {
-                var ww2 = 20, wh2 = Phaser.Math.Between(80, 140);
-                this.addWall(wx - ww2/2, wy - wh2/2, ww2, wh2);
-              } else {
-                // L-shape: horizontal arm + vertical arm
-                var aw = Phaser.Math.Between(60, 100), ah = 20;
-                var bw = 20,                           bh = Phaser.Math.Between(60, 100);
-                this.addWall(wx - aw/2, wy - ah/2, aw, ah);
-                this.addWall(wx - bw/2, wy + ah/2, bw, bh);
-              }
-              placed = true;
+              placeCluster(wx, wy);
+              found = true;
             }
           }
         }
@@ -1158,7 +1216,7 @@
 
         // ── Projectile system ───────────────────────────────────────────────
 
-        spawnBullet(x, y, vx, vy, fromEnemy) {
+        spawnBullet(x, y, vx, vy, fromEnemy, damage) {
           // Offset spawn forward so bullet starts outside the shooter's body
           var len = Math.sqrt(vx*vx + vy*vy);
           if (len > 0) {
@@ -1170,7 +1228,7 @@
           y = Math.max(BULLET_RADIUS, Math.min(this.H - BULLET_RADIUS, y));
           var color = fromEnemy ? 0xff4433 : 0x33aaff;
           var obj = this.add.circle(x, y, BULLET_RADIUS, color).setDepth(8);
-          this.bullets.push({ x: x, y: y, vx: vx, vy: vy, fromEnemy: fromEnemy, obj: obj });
+          this.bullets.push({ x: x, y: y, vx: vx, vy: vy, fromEnemy: fromEnemy, damage: damage || 1, obj: obj });
         }
 
         updateBullets(dt) {
@@ -1218,11 +1276,11 @@
               for (var ei = this.enemies.length - 1; ei >= 0; ei--) {
                 var e = this.enemies[ei];
                 var edx = b.x - e.x, edy = b.y - e.y;
-                var er = ENEMY_RADIUS + BULLET_RADIUS;
+                var er = (e.radius || ENEMY_RADIUS) + BULLET_RADIUS;
                 if (edx*edx + edy*edy < er*er) {
                   this.splatEffect(b.x, b.y, 0x44ff88);
                   b.obj.destroy(); this.bullets.splice(i, 1);
-                  this.enemyTakeHit(e);
+                  this.enemyTakeHit(e, b.damage);
                   hit = true; break;
                 }
               }
@@ -1256,7 +1314,7 @@
           }
           var dx = tx - this.heroX, dy = ty - this.heroY;
           var len = Math.sqrt(dx*dx + dy*dy);
-          var spd = 200;
+          var spd = 320;
           var vx = len > 1 ? (dx/len)*spd : this.lastFacingX*spd;
           var vy = len > 1 ? (dy/len)*spd : this.lastFacingY*spd;
           var obj    = this.add.circle(this.heroX, this.heroY, 7, 0x886600).setDepth(9);
@@ -1303,36 +1361,51 @@
         }
 
         detonateGrenade(g) {
-          if (GRENADE_TYPE === 'frag')  this.detonateFrag(g.x, g.y);
+          var fe = g.fromEnemy || false;
+          if (GRENADE_TYPE === 'frag')  this.detonateFrag(g.x, g.y, fe);
           else if (GRENADE_TYPE === 'smoke') this.detonateSmoke(g.x, g.y);
-          else if (GRENADE_TYPE === 'flash') this.detonateFlash(g.x, g.y);
+          else if (GRENADE_TYPE === 'flash') this.detonateFlash(g.x, g.y, fe);
           else if (GRENADE_TYPE === 'slow')  this.detonateSlow(g.x, g.y);
         }
 
-        detonateFrag(x, y) {
+        detonateFrag(x, y, fromEnemy) {
           var BLAST = 90;
           // Expanding ring flash
           var ring = this.add.circle(x, y, 10, 0xff8800, 0.9).setDepth(20);
           this.tweens.add({ targets: ring, scaleX: BLAST/5, scaleY: BLAST/5, alpha: 0,
             duration: 420, ease: 'Power2',
             onComplete: function() { if (ring.active) ring.destroy(); } });
-          // Damage enemies in blast radius
-          var self = this;
-          for (var i = this.enemies.length - 1; i >= 0; i--) {
-            var e = this.enemies[i];
-            var ex = e.x - x, ey = e.y - y;
-            if (ex*ex + ey*ey < BLAST*BLAST) {
-              e.hp -= 2;
-              this.splatEffect(e.x, e.y, 0xff8800);
-              if (e.hp <= 0) {
-                var zone = e.patrolZone;
-                e.obj.destroy();
-                this.enemies.splice(i, 1);
-                this.score++;
-                this.scoreTxt.setText('Score: ' + this.score);
-                (function(z) { self.time.delayedCall(3000, function() {
-                  if (!self.isGameOver) self.spawnEnemy(z); }); })(zone);
+          var hDx = this.heroX - x, hDy = this.heroY - y;
+          if (!fromEnemy) {
+            // Hero-thrown frag: damage enemies in blast radius
+            var self = this;
+            for (var i = this.enemies.length - 1; i >= 0; i--) {
+              var e = this.enemies[i];
+              var ex = e.x - x, ey = e.y - y;
+              if (ex*ex + ey*ey < BLAST*BLAST) {
+                e.hp -= 2;
+                this.splatEffect(e.x, e.y, 0xff8800);
+                if (e.hp <= 0) {
+                  var zone = e.patrolZone;
+                  if (e.hpBar) e.hpBar.destroy();
+                  e.obj.destroy();
+                  this.enemies.splice(i, 1);
+                  this.score++;
+                  this.scoreTxt.setText('Score: ' + this.score);
+                  (function(z) { self.time.delayedCall(3000, function() {
+                    if (!self.isGameOver) self.spawnEnemy(z); }); })(zone);
+                }
               }
+            }
+            // Self-damage: hero too close to own blast (inner 55% of radius)
+            var selfBlast = BLAST * 0.55;
+            if (hDx*hDx + hDy*hDy < selfBlast*selfBlast && !this.isInvincible) {
+              this.heroTakeHit();
+            }
+          } else {
+            // Enemy-thrown frag: damage hero if in range
+            if (hDx*hDx + hDy*hDy < BLAST*BLAST && !this.isInvincible) {
+              this.heroTakeHit();
             }
           }
         }
@@ -1343,14 +1416,22 @@
           this.smokeZones.push({ x: x, y: y, r: SR, until: this.time.now + DUR, obj: obj });
         }
 
-        detonateFlash(x, y) {
+        detonateFlash(x, y, fromEnemy) {
           var FR = 200;
-          // White screen flash
+          var now = this.time.now;
+          // White screen flash (visual for everyone)
           var flash = this.add.rectangle(this.W/2, this.H/2, this.W, this.H, 0xffffff, 0.95).setDepth(100);
           this.tweens.add({ targets: flash, alpha: 0, duration: 1500, ease: 'Power2',
             onComplete: function() { if (flash.active) flash.destroy(); } });
+          // Hero disorientation (if hero is in range)
+          var hDx = this.heroX - x, hDy = this.heroY - y;
+          if (hDx*hDx + hDy*hDy < FR*FR) {
+            this.heroDisorientedUntil = now + 1500;
+            var yFlash = this.add.rectangle(this.W/2, this.H/2, this.W, this.H, 0xffee00, 0.20).setDepth(53);
+            this.tweens.add({ targets: yFlash, alpha: 0, delay: 700, duration: 800,
+              onComplete: function() { if (yFlash.active) yFlash.destroy(); } });
+          }
           // Blind nearby enemies
-          var now = this.time.now;
           for (var i = 0; i < this.enemies.length; i++) {
             var e = this.enemies[i];
             var ex = e.x - x, ey = e.y - y;
@@ -1380,13 +1461,25 @@
 
         tryHeroShoot(targetX, targetY) {
           var now = this.time.now;
-          if (now - this.lastShot < FIRE_RATE) return;
+          if (now - this.lastShot < this.currentFireRate) return;
           this.lastShot = now;
           var dx = targetX - this.heroX, dy = targetY - this.heroY;
           var len = Math.sqrt(dx*dx + dy*dy);
           if (len < 1) { dx = this.lastFacingX; dy = this.lastFacingY; len = 1; }
           this.lastFacingX = dx/len; this.lastFacingY = dy/len;
-          this.spawnBullet(this.heroX, this.heroY, (dx/len)*PROJ_SPEED, (dy/len)*PROJ_SPEED, false);
+          var nx = dx/len, ny = dy/len;
+          if (this.currentWeapon === 'shotgun') {
+            var baseAngle = Math.atan2(ny, nx);
+            var spread = [-0.34, -0.17, 0, 0.17, 0.34];
+            for (var si = 0; si < spread.length; si++) {
+              var a = baseAngle + spread[si];
+              this.spawnBullet(this.heroX, this.heroY, Math.cos(a)*PROJ_SPEED*0.9, Math.sin(a)*PROJ_SPEED*0.9, false, 1);
+            }
+          } else if (this.currentWeapon === 'sniper') {
+            this.spawnBullet(this.heroX, this.heroY, nx*PROJ_SPEED*1.8, ny*PROJ_SPEED*1.8, false, 3);
+          } else {
+            this.spawnBullet(this.heroX, this.heroY, nx*PROJ_SPEED, ny*PROJ_SPEED, false, 1);
+          }
           this.sounds.shoot && this.sounds.shoot();
         }
 
@@ -1411,7 +1504,7 @@
           for (var i = 0; i < HERO_HP; i++) {
             var h = this.add.text(16 + i*28, 52, i < this.heroHp ? '❤️' : '🖤', {
               fontSize: '20px', fontFamily: 'Arial'
-            }).setDepth(30);
+            }).setDepth(56);
             this.hpObjs.push(h);
           }
         }
@@ -1441,12 +1534,14 @@
         }
 
         spawnEnemy(zone) {
+          var eType = ENEMY_TYPES[Math.floor(Math.random() * ENEMY_TYPES.length)];
+          var stats  = ETYPE_STATS[eType] || ETYPE_STATS.grunt;
           var x, y, attempts = 0;
           do {
             x = Phaser.Math.Between(zone.x + 30, Math.max(zone.x + 35, zone.x + zone.w - 30));
             y = Phaser.Math.Between(zone.y + 30, Math.max(zone.y + 35, zone.y + zone.h - 30));
             attempts++;
-          } while (attempts < 20 && this.isPositionInWall(x, y, ENEMY_RADIUS));
+          } while (attempts < 20 && this.isPositionInWall(x, y, stats.radius));
 
           var obj;
           if (this.useEnemySpr) {
@@ -1456,28 +1551,40 @@
               fontSize: '44px', fontFamily: 'Arial'
             }).setOrigin(0.5).setDepth(4);
           }
+          if (stats.scale !== 1.0) obj.setScale(stats.scale);
+          if (stats.tint !== -1)   obj.setTint(stats.tint);
+
           var axis = Math.random() < 0.5 ? 'x' : 'y';
           var initAngle = Math.random() * Math.PI * 2;
+          var hpBar = this.add.graphics().setDepth(12);
           this.enemies.push({
             x: x, y: y,
-            hp: ENEMY_HP, maxHp: ENEMY_HP,
+            hp: stats.hp, maxHp: stats.hp,
+            eType: eType,
+            radius: stats.radius,
             state: 'patrol',
             patrolZone: zone,
             patrolDir: 1,
             patrolAxis: axis,
-            patrolSpeed: Phaser.Math.Between(55, 90),
+            patrolSpeed: Phaser.Math.Between(stats.patrolMin, stats.patrolMax),
+            alertSpeed: stats.alertSpd,
+            shootsBack: stats.shootsBack,
+            frMult: stats.frMult,
             shootTimer: 0,
+            grenadeTimer: 0,
             lastFacingX: Math.cos(initAngle),
             lastFacingY: Math.sin(initAngle),
             blindedUntil: 0,
+            hpBar: hpBar,
             obj: obj,
           });
         }
 
-        enemyTakeHit(e) {
-          e.hp--;
+        enemyTakeHit(e, dmg) {
+          e.hp -= (dmg || 1);
           if (e.hp <= 0) {
             var obj = e.obj;
+            if (e.hpBar && e.hpBar.active) e.hpBar.destroy();
             this.tweens.add({
               targets: obj, alpha: 0, scaleX: 1.8, scaleY: 1.8,
               duration: 250, ease: 'Power2',
@@ -1511,7 +1618,7 @@
           if (e.blindedUntil && this.time.now < e.blindedUntil) {
             e.x += e.lastFacingX * 55 * dt;
             e.y += e.lastFacingY * 55 * dt;
-            var br = this.resolveWallCollision(e.x, e.y, ENEMY_RADIUS);
+            var br = this.resolveWallCollision(e.x, e.y, e.radius || ENEMY_RADIUS);
             e.x = br.x; e.y = br.y;
             e.obj.setPosition(e.x, e.y);
             if (Math.random() < 0.02) {
@@ -1526,6 +1633,8 @@
           var dist = Math.sqrt(dx*dx + dy*dy);
           var los  = this.hasLOS(e.x, e.y, hx, hy);
 
+          var er = e.radius || ENEMY_RADIUS;
+
           if (e.state === 'patrol') {
             var spd = e.patrolSpeed;
             if (e.patrolAxis === 'x') {
@@ -1537,28 +1646,41 @@
               if (e.y > e.patrolZone.y + e.patrolZone.h - 20) e.patrolDir = -1;
               if (e.y < e.patrolZone.y + 20)                  e.patrolDir =  1;
             }
-            var patRes = this.resolveWallCollision(e.x, e.y, ENEMY_RADIUS);
+            var patRes = this.resolveWallCollision(e.x, e.y, er);
             e.x = patRes.x; e.y = patRes.y;
             if (los && dist < 280) e.state = 'alert';
 
           } else if (e.state === 'alert') {
             if (dist > 0) {
-              var nx = e.x + (dx/dist) * 95 * dt;
-              var ny = e.y + (dy/dist) * 95 * dt;
-              var res = this.resolveWallCollision(nx, ny, ENEMY_RADIUS);
+              var nx = e.x + (dx/dist) * (e.alertSpeed || 95) * dt;
+              var ny = e.y + (dy/dist) * (e.alertSpeed || 95) * dt;
+              var res = this.resolveWallCollision(nx, ny, er);
               e.x = res.x; e.y = res.y;
             }
             if (dist < 150 && los) { e.state = 'shoot'; e.shootTimer = 0; }
             if (dist > 380 || !los) e.state = 'patrol';
 
           } else if (e.state === 'shoot') {
-            e.shootTimer += dt * 1000;
-            if (e.shootTimer >= this.currentEnemyFireRate) {
-              e.shootTimer = 0;
-              if (dist > 0) {
-                this.spawnBullet(e.x, e.y, (dx/dist)*PROJ_SPEED, (dy/dist)*PROJ_SPEED, true);
+            var eFireRate = this.currentEnemyFireRate * (e.frMult || 1.0);
+            if (e.shootsBack !== false) {
+              e.shootTimer += dt * 1000;
+              if (e.shootTimer >= eFireRate) {
+                e.shootTimer = 0;
+                if (dist > 0) {
+                  this.spawnBullet(e.x, e.y, (dx/dist)*PROJ_SPEED, (dy/dist)*PROJ_SPEED, true);
+                }
               }
             }
+            // Enemy grenade throw
+            if (ENEMY_GRENADES && dist > 0) {
+              e.grenadeTimer = (e.grenadeTimer || 0) + dt * 1000;
+              if (e.grenadeTimer >= ENEMY_GRENADE_CD) {
+                e.grenadeTimer = 0;
+                this.spawnEnemyGrenade(e);
+              }
+            }
+            // Scouts can't enter shoot state — fall back to alert
+            if (e.shootsBack === false) { e.state = 'alert'; }
             if (!los || dist > 240) e.state = 'alert';
             // Occasionally seek cover when damaged
             if (e.hp < e.maxHp && Math.random() < 0.008) e.state = 'cover';
@@ -1573,7 +1695,7 @@
               } else {
                 var nx2 = e.x + (tdx/tdist) * 110 * dt;
                 var ny2 = e.y + (tdy/tdist) * 110 * dt;
-                var res2 = this.resolveWallCollision(nx2, ny2, ENEMY_RADIUS);
+                var res2 = this.resolveWallCollision(nx2, ny2, er);
                 e.x = res2.x; e.y = res2.y;
               }
             } else {
@@ -1581,9 +1703,24 @@
             }
           }
 
-          e.x = Math.max(ENEMY_RADIUS, Math.min(this.W - ENEMY_RADIUS, e.x));
-          e.y = Math.max(ENEMY_RADIUS, Math.min(this.H - ENEMY_RADIUS, e.y));
+          e.x = Math.max(er, Math.min(this.W - er, e.x));
+          e.y = Math.max(er, Math.min(this.H - er, e.y));
           e.obj.setPosition(e.x, e.y);
+
+          // Draw HP bar (only when damaged)
+          if (e.hpBar) {
+            e.hpBar.clear();
+            if (e.hp < e.maxHp) {
+              var barW = er * 2 + 6, barH = 4;
+              var bary = e.y - er - 9;
+              e.hpBar.fillStyle(0x222222, 0.8);
+              e.hpBar.fillRect(e.x - barW/2, bary, barW, barH);
+              var ratio = e.hp / e.maxHp;
+              var col = ratio > 0.6 ? 0x44dd44 : ratio > 0.3 ? 0xdddd22 : 0xdd2222;
+              e.hpBar.fillStyle(col, 1);
+              e.hpBar.fillRect(e.x - barW/2, bary, barW * ratio, barH);
+            }
+          }
         }
 
         findCoverPoint(e) {
@@ -1591,11 +1728,12 @@
           var best = null, bestDist = Infinity;
           for (var i = 0; i < this.walls.length; i++) {
             var w = this.walls[i];
+            var er2 = e.radius || ENEMY_RADIUS;
             var pts = [
-              { x: w.x + w.w/2, y: w.y - ENEMY_RADIUS - 5 },
-              { x: w.x + w.w/2, y: w.y + w.h + ENEMY_RADIUS + 5 },
-              { x: w.x - ENEMY_RADIUS - 5, y: w.y + w.h/2 },
-              { x: w.x + w.w + ENEMY_RADIUS + 5, y: w.y + w.h/2 },
+              { x: w.x + w.w/2, y: w.y - er2 - 5 },
+              { x: w.x + w.w/2, y: w.y + w.h + er2 + 5 },
+              { x: w.x - er2 - 5, y: w.y + w.h/2 },
+              { x: w.x + w.w + er2 + 5, y: w.y + w.h/2 },
             ];
             for (var pi = 0; pi < pts.length; pi++) {
               var pt = pts[pi];
@@ -1616,6 +1754,158 @@
             }
           }
           return best;
+        }
+
+        // ── Pickup system ────────────────────────────────────────────────────
+
+        randomPickupPos(margin) {
+          var W = this.W, H = this.H;
+          margin = margin || 40;
+          for (var attempts = 0; attempts < 50; attempts++) {
+            var x = Phaser.Math.Between(margin, W - margin);
+            var y = Phaser.Math.Between(margin, H - margin);
+            var dx = x - W/2, dy = y - H/2;
+            if (dx*dx + dy*dy < 80*80) continue; // avoid center spawn
+            if (!this.isPositionInWall(x, y, 18)) return { x: x, y: y };
+          }
+          return { x: Phaser.Math.Between(margin, W - margin), y: Phaser.Math.Between(margin, H - margin) };
+        }
+
+        spawnInitialPickups(type, count) {
+          for (var i = 0; i < count; i++) {
+            var pos = this.randomPickupPos(40);
+            this.spawnPickup(type, pos.x, pos.y);
+          }
+        }
+
+        spawnPickup(type, x, y) {
+          var color  = type === 'health' ? 0x33cc44 : 0xddaa11;
+          var emoji  = type === 'health' ? '❤️' : '📦';
+          var circle = this.add.circle(x, y, 12, color, 0.85).setDepth(7);
+          var label  = this.add.text(x, y, emoji, { fontSize: '15px', fontFamily: 'Arial' }).setOrigin(0.5).setDepth(8);
+          this.tweens.add({ targets: [circle, label], y: '-=5', duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+          this.pickups.push({ x: x, y: y, type: type, obj: circle, labelObj: label, respawnAt: 0 });
+        }
+
+        updatePickups() {
+          var now = this.time.now;
+          for (var i = 0; i < this.pickups.length; i++) {
+            var p = this.pickups[i];
+            // Respawn when destroyed + timer elapsed
+            if (!p.obj || !p.obj.active) {
+              if (p.respawnAt > 0 && now > p.respawnAt) {
+                var pos = this.randomPickupPos(40);
+                p.x = pos.x; p.y = pos.y;
+                var color = p.type === 'health' ? 0x33cc44 : 0xddaa11;
+                var emoji  = p.type === 'health' ? '❤️' : '📦';
+                p.obj = this.add.circle(pos.x, pos.y, 12, color, 0.85).setDepth(7);
+                p.labelObj = this.add.text(pos.x, pos.y, emoji, { fontSize: '15px', fontFamily: 'Arial' }).setOrigin(0.5).setDepth(8);
+                this.tweens.add({ targets: [p.obj, p.labelObj], y: '-=5', duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+                p.respawnAt = 0;
+              }
+              continue;
+            }
+            // Collision with hero
+            var pdx = this.heroX - p.x, pdy = this.heroY - p.y;
+            if (pdx*pdx + pdy*pdy < (HERO_RADIUS + 14) * (HERO_RADIUS + 14)) {
+              if (p.type === 'health' && this.heroHp < HERO_HP) {
+                this.heroHeal();
+                p.obj.destroy(); if (p.labelObj) p.labelObj.destroy();
+                p.obj = null; p.labelObj = null; p.respawnAt = now + 18000;
+              } else if (p.type === 'grenade' && this.grenadeAmmo !== Infinity) {
+                this.grenadeAmmo = Math.min(this.grenadeAmmo + 2, GRENADE_COUNT + 2);
+                if (this.grenadeTxt) {
+                  var gi = { frag: '💣', smoke: '💨', flash: '🔆', slow: '⏱️' }[GRENADE_TYPE] || '💣';
+                  this.grenadeTxt.setText(gi + ' ×' + this.grenadeAmmo);
+                }
+                p.obj.destroy(); if (p.labelObj) p.labelObj.destroy();
+                p.obj = null; p.labelObj = null; p.respawnAt = now + 18000;
+              }
+            }
+          }
+        }
+
+        heroHeal() {
+          this.heroHp = Math.min(this.heroHp + 1, HERO_HP);
+          this.buildHpHUD();
+          // Brief green flash on hero
+          var hero = this.heroObj;
+          this.tweens.add({ targets: hero, alpha: 0.4, duration: 80, yoyo: true, repeat: 1,
+            onComplete: function() { if (hero.active) hero.setAlpha(1); } });
+        }
+
+        // ── Weapon pickup system ─────────────────────────────────────────────
+
+        spawnInitialWeapons() {
+          var pool = ['machinegun', 'shotgun', 'sniper'];
+          var count = Math.min(2, pool.length);
+          for (var i = 0; i < count; i++) {
+            var pos = this.randomPickupPos(60);
+            this.spawnWeapon(pool[i], pos.x, pos.y);
+          }
+        }
+
+        spawnWeapon(weaponId, x, y) {
+          var colors = { machinegun: 0x4488ff, shotgun: 0xff8844, sniper: 0xaa44ff };
+          var icons  = { machinegun: '🔫', shotgun: '💥', sniper: '🎯' };
+          var circle = this.add.circle(x, y, 14, colors[weaponId] || 0x888888, 0.9).setDepth(7);
+          var label  = this.add.text(x, y, icons[weaponId] || '🔫', { fontSize: '18px', fontFamily: 'Arial' }).setOrigin(0.5).setDepth(8);
+          this.tweens.add({ targets: [circle, label], y: '-=5', duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+          this.weaponPickupObjs.push({ x: x, y: y, weaponId: weaponId, obj: circle, labelObj: label, respawnAt: 0 });
+        }
+
+        updateWeaponPickups() {
+          var now = this.time.now;
+          var self = this;
+          var fRates = { pistol: FIRE_RATE, machinegun: 100, shotgun: 700, sniper: 1000 };
+          var colors = { machinegun: 0x4488ff, shotgun: 0xff8844, sniper: 0xaa44ff };
+          var icons  = { machinegun: '🔫', shotgun: '💥', sniper: '🎯' };
+          var names  = { machinegun: 'Machine Gun', shotgun: 'Shotgun', sniper: 'Sniper' };
+          for (var i = 0; i < this.weaponPickupObjs.length; i++) {
+            var wp = this.weaponPickupObjs[i];
+            if (!wp.obj || !wp.obj.active) {
+              if (wp.respawnAt > 0 && now > wp.respawnAt) {
+                var pos = this.randomPickupPos(60);
+                wp.x = pos.x; wp.y = pos.y;
+                wp.obj = this.add.circle(pos.x, pos.y, 14, colors[wp.weaponId] || 0x888888, 0.9).setDepth(7);
+                wp.labelObj = this.add.text(pos.x, pos.y, icons[wp.weaponId] || '🔫', { fontSize: '18px', fontFamily: 'Arial' }).setOrigin(0.5).setDepth(8);
+                this.tweens.add({ targets: [wp.obj, wp.labelObj], y: '-=5', duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+                wp.respawnAt = 0;
+              }
+              continue;
+            }
+            var wdx = this.heroX - wp.x, wdy = this.heroY - wp.y;
+            if (wdx*wdx + wdy*wdy < (HERO_RADIUS + 16) * (HERO_RADIUS + 16)) {
+              self.currentWeapon   = wp.weaponId;
+              self.currentFireRate = fRates[wp.weaponId] || FIRE_RATE;
+              var banner = self.add.text(self.W/2, self.H * 0.28,
+                'Got ' + (names[wp.weaponId] || wp.weaponId) + '! ' + (icons[wp.weaponId] || '🔫'), {
+                fontSize: '22px', color: '#ffee44', stroke: '#000', strokeThickness: 4,
+              }).setOrigin(0.5).setDepth(57);
+              self.tweens.add({ targets: banner, alpha: 0, y: self.H * 0.22, delay: 1200, duration: 600,
+                onComplete: function() { if (banner.active) banner.destroy(); } });
+              wp.obj.destroy(); wp.labelObj.destroy();
+              wp.obj = null; wp.labelObj = null; wp.respawnAt = now + 20000;
+            }
+          }
+        }
+
+        // ── Enemy grenade ────────────────────────────────────────────────────
+
+        spawnEnemyGrenade(e) {
+          var dx = this.heroX - e.x, dy = this.heroY - e.y;
+          var len = Math.sqrt(dx*dx + dy*dy);
+          if (len < 1) return;
+          var spd = 280;
+          var obj    = this.add.circle(e.x, e.y, 6, 0xcc4400).setDepth(9);
+          var shadow = this.add.circle(e.x, e.y + 10, 4, 0x000000, 0.30).setDepth(6);
+          this.grenades.push({
+            x: e.x, y: e.y,
+            vx: (dx/len)*spd, vy: (dy/len)*spd,
+            fuse: 1600, fuseMax: 1600,
+            obj: obj, shadow: shadow,
+            fromEnemy: true,
+          });
         }
 
         // ── Difficulty ramp ─────────────────────────────────────────────────
@@ -1661,12 +1951,13 @@
             this.heroX + this.lastFacingX * 26,
             this.heroY + this.lastFacingY * 26, 4);
 
-          // Hero movement
+          // Hero movement (inverted when disoriented from flashbang)
           var vx = 0, vy = 0;
-          if (this.cursors.left.isDown  || this.wasd.A.isDown) vx = -1;
-          if (this.cursors.right.isDown || this.wasd.D.isDown) vx =  1;
-          if (this.cursors.up.isDown    || this.wasd.W.isDown) vy = -1;
-          if (this.cursors.down.isDown  || this.wasd.S.isDown) vy =  1;
+          var disorient = (this.heroDisorientedUntil > 0 && time < this.heroDisorientedUntil) ? -1 : 1;
+          if (this.cursors.left.isDown  || this.wasd.A.isDown) vx = -disorient;
+          if (this.cursors.right.isDown || this.wasd.D.isDown) vx =  disorient;
+          if (this.cursors.up.isDown    || this.wasd.W.isDown) vy = -disorient;
+          if (this.cursors.down.isDown  || this.wasd.S.isDown) vy =  disorient;
           // Mobile hold-to-move
           if (vx === 0 && vy === 0 && this.pointerDown && this.pointerTarget) {
             var pdx = this.pointerTarget.x - this.heroX;
@@ -1721,6 +2012,10 @@
           // Update grenades (always real time) + fog mask
           if (GRENADE_TYPE) this.updateGrenades(dt);
           if (FOG_OF_WAR) this.updateFog();
+
+          // Update pickups + weapon pickups
+          this.updatePickups();
+          if (WEAPON_PICKUPS) this.updateWeaponPickups();
         }
 
         // ── Game Over ───────────────────────────────────────────────────────
@@ -1733,7 +2028,7 @@
           } else {
             this.heroObj.setText('💥');
           }
-          // Clean up gun indicator, bullets, grenades, smoke, fog
+          // Clean up gun indicator, bullets, grenades, smoke, fog, pickups, weapons, hp bars
           if (this.heroGunIndicator) this.heroGunIndicator.destroy();
           this.heroObj.setRotation(0);
           this.bullets.forEach(function(b) { if (b.obj.active) b.obj.destroy(); });
@@ -1746,6 +2041,19 @@
           this.smokeZones.forEach(function(sz) { if (sz.obj.active) sz.obj.destroy(); });
           this.smokeZones = [];
           if (this.fogGraphics && this.fogGraphics.active) this.fogGraphics.destroy();
+          this.enemies.forEach(function(e) {
+            if (e.hpBar && e.hpBar.active) e.hpBar.destroy();
+          });
+          this.pickups.forEach(function(p) {
+            if (p.obj && p.obj.active) p.obj.destroy();
+            if (p.labelObj && p.labelObj.active) p.labelObj.destroy();
+          });
+          this.pickups = [];
+          this.weaponPickupObjs.forEach(function(wp) {
+            if (wp.obj && wp.obj.active) wp.obj.destroy();
+            if (wp.labelObj && wp.labelObj.active) wp.labelObj.destroy();
+          });
+          this.weaponPickupObjs = [];
 
           var cx = this.W/2, cy = this.H/2;
           this.add.rectangle(cx, cy, 420, 230, 0x000000, 0.82).setDepth(40);
