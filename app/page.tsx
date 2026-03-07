@@ -938,7 +938,7 @@ export default function Home() {
               <h1 className="text-lg font-bold text-white leading-tight">Game Maker</h1>
               <p className="text-xs text-gray-400 truncate">{subtitle}</p>
             </div>
-            <span className="text-[10px] text-gray-600 font-mono shrink-0 select-none">v1.0.1</span>
+            <span className="text-[10px] text-gray-600 font-mono shrink-0 select-none">v1.0.3</span>
           </div>
 
           {/* Tab bar — desktop only; mobile uses bottom nav */}
