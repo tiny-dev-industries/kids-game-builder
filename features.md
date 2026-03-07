@@ -1,6 +1,6 @@
 # Kids Game Builder — Feature Registry
 
-_Current version: **v1.0.3** | Production: https://kids-game-builder.vercel.app_
+_Current version: **v1.0.4** | Production: https://kids-game-builder.vercel.app_
 
 > **Note (M11-prereq):** References to `public/game.html` in older milestone rows are historical —
 > all Phaser scene code has been migrated to `src/game/*.ts` (compiled to `public/scenes/`).
@@ -280,14 +280,46 @@ _Current version: **v1.0.3** | Production: https://kids-game-builder.vercel.app_
 
 ---
 
+## M11 — Platformer Template (v1.0.4)
+
+| Status | Feature | Key Files |
+|--------|---------|-----------|
+| ✅ | Platformer game template — left/right movement, multi-height platforms, stomp enemies | `src/game/scenes/platformer.ts` |
+| ✅ | 3 rows of floating platforms; each row split into 3 zones (at least 1 platform per row) | `src/game/scenes/platformer.ts` (generatePlatforms) |
+| ✅ | One-way swept platform collision — land from above only; 8px horizontal tolerance | `src/game/scenes/platformer.ts` (checkPlatformCollisions) |
+| ✅ | Stomp mechanic — falling hero (heroVY > 80) enters enemy top zone → kill + bounce | `src/game/scenes/platformer.ts` (checkHeroEnemyCollisions) |
+| ✅ | Enemy patrol — bounces between platform edges with 18px margin; flips to face direction | `src/game/scenes/platformer.ts` (updateEnemies) |
+| ✅ | Screen-edge wrapping — hero exits left/right edge and reappears on the other side | `src/game/scenes/platformer.ts` (update) |
+| ✅ | Wave clear bonus — all enemies stomped → +3 pts + immediate respawn on all platforms | `src/game/scenes/platformer.ts` (update) |
+| ✅ | `PlatformerConfig.doubleJump` — optional second mid-air jump at 0.80× force | `lib/types.ts` (PlatformerConfig), `src/game/scenes/platformer.ts` (doJump) |
+| ✅ | Touch controls — hold left half = move left, hold right half = move right, any tap = jump | `src/game/scenes/platformer.ts` (pointer handlers) |
+| ✅ | ActionSystem compatibility — lives/collectibles/shield actions work in platformer | `src/game/scenes/platformer.ts` (ActionSystem.init/tick/handleCollision) |
+| ✅ | `template: 'platformer'` added to `GameConfig`, `PlatformerConfig` interface added | `lib/types.ts` |
+| ✅ | `startPlatformerGame` declared in `phaser-global.d.ts`; wired into `startGame` dispatcher | `src/game/shared.ts`, `src/game/phaser-global.d.ts` |
+| ✅ | `platformer.ts` added to esbuild scripts (both `build:game` and `dev:game`) | `package.json` |
+| ✅ | `<script src="scenes/platformer.js">` added to game.html load order | `public/game.html` |
+| ✅ | `requestAnimationFrame` fix in game.html LOAD_CONFIG handler — prevents 0×0 canvas on first load | `public/game.html` |
+| ✅ | Template validation in `generateGameConfig` now accepts 'platformer' | `lib/ai.ts` |
+| ✅ | `jumpForce` server-set to 630 for platformer (580 for all other templates) | `lib/ai.ts` (generateGameConfig) |
+| ✅ | 'platformer' removed from `CLONE_KEYWORDS` — prevents hint `[preferred template: platformer]` triggering code mode | `lib/ai.ts` |
+| ✅ | AI CREATE: platformer classification rules, keyword vocab, template examples | `lib/ai.ts` (CREATE_SYSTEM_PROMPT) |
+| ✅ | AI UPDATE: "switch to platformer", "add/remove double jump" rules | `lib/ai.ts` (UPDATE_SYSTEM_PROMPT) |
+| ✅ | 4-way `TemplateToggle` (2×2 grid) — 🏃 Runner / ⬆️ Top-Down / 🔫 Shooter / 🪜 Platformer (green) | `app/page.tsx` (TemplateToggle) |
+| ✅ | Template picker grid updated — 2×2 for 4 templates, Clone full-width at bottom | `app/page.tsx` (template picker) |
+| ✅ | `preferredTemplate` state type extended to include `'platformer'` | `app/page.tsx` |
+| ✅ | Platformer-specific style chips — 🏃 Go Runner, ⬆️ Go Top-Down, 👾 More Enemies, 🦘 Double Jump | `app/page.tsx` (styleChips) |
+| ✅ | Textarea placeholder for platformer template | `app/page.tsx` (textareaPlaceholder) |
+
+---
+
 ## Planned / Future
 
 | Status | Feature | Notes |
 |--------|---------|-------|
 | ⏳ | Ricochet bullets, homing projectiles | Shooter building blocks |
-| ⏳ | Boss enemy / wave system | M11 candidate |
+| ⏳ | Boss enemy / wave system | M12 candidate |
 | ⏳ | Save / share game URL | Serialize GameConfig to URL params or short link |
-| ⏳ | More game templates (platformer, racing, tower defense) | M11+ candidates |
+| ⏳ | More game templates (racing, tower defense, maze) | M12+ candidates |
 | ⏳ | More action types (boss wave, time limit, checkpoint) | M7 candidate |
 | ⏳ | User-uploadable sprite images | Needs storage (Vercel Blob or similar) |
 | ⏳ | Game title screen / intro animation | Polish pass |

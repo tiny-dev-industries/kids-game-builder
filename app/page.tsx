@@ -75,14 +75,14 @@ function ColorInput({ hex, onChange }: { hex: string; onChange: (v: string) => v
 }
 
 function TemplateToggle({ value, onChange }: {
-  value: 'runner' | 'topdown' | 'shooter'
-  onChange: (v: 'runner' | 'topdown' | 'shooter') => void
+  value: 'runner' | 'topdown' | 'shooter' | 'platformer'
+  onChange: (v: 'runner' | 'topdown' | 'shooter' | 'platformer') => void
 }) {
   return (
-    <div className="flex bg-gray-700 rounded-xl p-0.5 gap-0.5">
+    <div className="grid grid-cols-2 bg-gray-700 rounded-xl p-0.5 gap-0.5">
       <button
         onClick={() => onChange('runner')}
-        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+        className={`py-1.5 text-xs font-medium rounded-lg transition-all ${
           value === 'runner' ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
         }`}
       >
@@ -90,7 +90,7 @@ function TemplateToggle({ value, onChange }: {
       </button>
       <button
         onClick={() => onChange('topdown')}
-        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+        className={`py-1.5 text-xs font-medium rounded-lg transition-all ${
           value === 'topdown' ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
         }`}
       >
@@ -98,11 +98,19 @@ function TemplateToggle({ value, onChange }: {
       </button>
       <button
         onClick={() => onChange('shooter')}
-        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+        className={`py-1.5 text-xs font-medium rounded-lg transition-all ${
           value === 'shooter' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
         }`}
       >
         🔫 Shooter
+      </button>
+      <button
+        onClick={() => onChange('platformer')}
+        className={`py-1.5 text-xs font-medium rounded-lg transition-all ${
+          value === 'platformer' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
+        }`}
+      >
+        🪜 Platformer
       </button>
     </div>
   )
@@ -341,8 +349,8 @@ function SettingsPanel({ config, onConfigChange, gameMode, codeGameTitle, mobile
   codeGameTitle: string
   mobileTarget: boolean
   onMobileToggle: () => void
-  preferredTemplate: 'runner' | 'topdown' | 'shooter'
-  onTemplatePreferenceChange: (t: 'runner' | 'topdown' | 'shooter') => void
+  preferredTemplate: 'runner' | 'topdown' | 'shooter' | 'platformer'
+  onTemplatePreferenceChange: (t: 'runner' | 'topdown' | 'shooter' | 'platformer') => void
   onTarget: (prefill: string) => void
 }) {
   // Code game: read-only panel
@@ -599,7 +607,7 @@ export default function Home() {
 
   // M4: output target settings
   const [mobileTarget, setMobileTarget] = useState(false)
-  const [preferredTemplate, setPreferredTemplate] = useState<'runner' | 'topdown' | 'shooter'>('runner')
+  const [preferredTemplate, setPreferredTemplate] = useState<'runner' | 'topdown' | 'shooter' | 'platformer'>('runner')
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const recognitionRef = useRef<any>(null)
@@ -863,6 +871,15 @@ export default function Home() {
         { label: '⭐ Add Collectibles', prompt: 'add collectibles to pick up for bonus points' },
         { label: '💀 More Enemies',    prompt: 'make enemies spawn faster and more often' },
       ]
+    } else if (template === 'platformer') {
+      const hasDoubleJump = !!(currentConfig?.platformer?.doubleJump)
+      return [
+        { label: '🏃 Go Runner',         prompt: 'switch to a side-scrolling runner game' },
+        { label: '⬆️ Go Top-Down',       prompt: 'switch to a top-down overhead game' },
+        { label: '👾 More Enemies',      prompt: 'make enemies spawn more often' },
+        ...(!hasDoubleJump ? [{ label: '🦘 Double Jump',        prompt: 'add double jump so I can jump again in the air' }] : []),
+        ...(hasDoubleJump  ? [{ label: '🎯 Remove Double Jump', prompt: 'remove double jump' }] : []),
+      ]
     } else {
       const runnerChips: { label: string; prompt: string }[] = [
         { label: '🎯 Go Top-Down',     prompt: 'switch to a top-down overhead game' },
@@ -991,31 +1008,24 @@ export default function Home() {
                 <p className="text-center text-gray-400 text-xs font-semibold uppercase tracking-widest mb-3">What kind of game?</p>
                 <div className="grid grid-cols-2 gap-2">
                   {([
-                    { key: 'runner',  emoji: '🏃', label: 'Runner',    desc: 'Jump & dodge obstacles' },
-                    { key: 'topdown', emoji: '⬆️', label: 'Top-Down',  desc: 'Move in all directions' },
-                    { key: 'shooter', emoji: '🔫', label: 'Shooter',   desc: 'Fight back with bullets' },
-                    { key: 'clone',   emoji: '🕹️', label: 'Clone',     desc: 'Rebuild a classic game' },
+                    { key: 'runner',     emoji: '🏃', label: 'Runner',     desc: 'Jump & dodge obstacles' },
+                    { key: 'topdown',    emoji: '⬆️', label: 'Top-Down',   desc: 'Move in all directions' },
+                    { key: 'shooter',    emoji: '🔫', label: 'Shooter',    desc: 'Fight back with bullets' },
+                    { key: 'platformer', emoji: '🪜', label: 'Platformer', desc: 'Stomp enemies on platforms' },
                   ] as const).map(({ key, emoji, label, desc }) => {
-                    const isClone = key === 'clone'
-                    const isActive = isClone
-                      ? inputMode === 'clone'
-                      : preferredTemplate === key && inputMode !== 'clone'
+                    const isActive = preferredTemplate === key && inputMode !== 'clone'
                     const activeClass = isActive
-                      ? key === 'shooter' ? 'bg-red-900/60 border-red-600 text-white'
-                      : key === 'topdown' ? 'bg-purple-900/60 border-purple-600 text-white'
-                      : key === 'clone'   ? 'bg-orange-900/60 border-orange-600 text-white'
+                      ? key === 'shooter'    ? 'bg-red-900/60 border-red-600 text-white'
+                      : key === 'topdown'    ? 'bg-purple-900/60 border-purple-600 text-white'
+                      : key === 'platformer' ? 'bg-green-900/60 border-green-600 text-white'
                       : 'bg-gray-600/80 border-gray-400 text-white'
                       : 'bg-gray-800/60 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300'
                     return (
                       <button
                         key={key}
                         onClick={() => {
-                          if (isClone) {
-                            setInputMode('clone')
-                          } else {
-                            setPreferredTemplate(key as 'runner' | 'topdown' | 'shooter')
-                            setInputMode('simple')
-                          }
+                          setPreferredTemplate(key)
+                          setInputMode('simple')
                         }}
                         className={`flex flex-col items-center p-3 rounded-xl text-center transition-all border ${activeClass}`}
                       >
@@ -1025,6 +1035,18 @@ export default function Home() {
                       </button>
                     )
                   })}
+                  <button
+                    onClick={() => setInputMode('clone')}
+                    className={`col-span-2 flex flex-col items-center p-3 rounded-xl text-center transition-all border ${
+                      inputMode === 'clone'
+                        ? 'bg-orange-900/60 border-orange-600 text-white'
+                        : 'bg-gray-800/60 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl mb-1">🕹️</span>
+                    <span className="text-xs font-semibold">Clone</span>
+                    <span className="text-[10px] text-gray-500 mt-0.5 leading-tight">Rebuild a classic game</span>
+                  </button>
                 </div>
                 <p className="text-center text-gray-600 text-[10px] mt-3">Then describe your game below ↓</p>
               </div>

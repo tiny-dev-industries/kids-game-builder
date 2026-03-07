@@ -41,6 +41,7 @@
   <script src="scenes/runner.js"></script>
   <script src="scenes/topdown.js"></script>
   <script src="scenes/shooter.js"></script>
+  <script src="scenes/platformer.js"></script>
 
   <script>
     // ── Listen for config or generated code from parent page ─────────────────
@@ -53,11 +54,17 @@
           window.__phaserGame.destroy(true);
           window.__phaserGame = null;
         }
-        try {
-          startGame(event.data.config);
-        } catch (err) {
-          window.parent.postMessage({ type: 'GAME_ERROR', message: err.message || String(err) }, '*');
-        }
+        // Use rAF so the iframe's viewport is fully laid out before Phaser reads
+        // window.innerWidth/innerHeight — without this, the very first LOAD_CONFIG
+        // received on a fresh page load can see width/height = 0.
+        var pendingConfig = event.data.config;
+        requestAnimationFrame(function() {
+          try {
+            startGame(pendingConfig);
+          } catch (err) {
+            window.parent.postMessage({ type: 'GAME_ERROR', message: err.message || String(err) }, '*');
+          }
+        });
 
       } else if (event.data.type === 'LOAD_CODE') {
         // Tear down runner/topdown game and any previous code game

@@ -7,8 +7,8 @@
     "build": "npm run build:game && next build",
     "start": "next start",
     "lint": "next lint",
-    "build:game": "node_modules/.bin/esbuild src/game/shared.ts src/game/action-system.ts --outdir=public/scenes --platform=browser --target=es2020 && node_modules/.bin/esbuild src/game/scenes/runner.ts src/game/scenes/topdown.ts src/game/scenes/shooter.ts --outdir=public/scenes --platform=browser --target=es2020",
-    "dev:game": "node_modules/.bin/esbuild src/game/shared.ts src/game/action-system.ts --outdir=public/scenes --platform=browser --target=es2020 --watch & node_modules/.bin/esbuild src/game/scenes/runner.ts src/game/scenes/topdown.ts src/game/scenes/shooter.ts --outdir=public/scenes --platform=browser --target=es2020 --watch",
+    "build:game": "node_modules/.bin/esbuild src/game/shared.ts src/game/action-system.ts --outdir=public/scenes --platform=browser --target=es2020 && node_modules/.bin/esbuild src/game/scenes/runner.ts src/game/scenes/topdown.ts src/game/scenes/shooter.ts src/game/scenes/platformer.ts --outdir=public/scenes --platform=browser --target=es2020",
+    "dev:game": "node_modules/.bin/esbuild src/game/shared.ts src/game/action-system.ts --outdir=public/scenes --platform=browser --target=es2020 --watch & node_modules/.bin/esbuild src/game/scenes/runner.ts src/game/scenes/topdown.ts src/game/scenes/shooter.ts src/game/scenes/platformer.ts --outdir=public/scenes --platform=browser --target=es2020 --watch",
     "type-check:game": "node node_modules/typescript/bin/tsc --noEmit --project tsconfig.game.json"
   },
   "dependencies": {

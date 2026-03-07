@@ -76,6 +76,8 @@ function startGame(config: GameConfig) {
     startTopDownGame(config);
   } else if (config.template === 'shooter') {
     startShooterGame(config);
+  } else if (config.template === 'platformer') {
+    startPlatformerGame(config);
   } else {
     startRunnerGame(config);
   }

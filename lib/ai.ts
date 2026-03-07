@@ -40,7 +40,7 @@ You are a fun game design helper for kids. A kid will describe a game idea and y
 Your job: pick the best emojis, colors, template, AND sprites that match their description.
 
 Rules:
-- template: "runner" for side-scrolling games where the hero jumps over enemies; "topdown" for games where the player moves in all 4 directions avoiding enemies from above
+- template: "runner" for side-scrolling games where the hero jumps over enemies; "topdown" for games where the player moves in all 4 directions avoiding enemies from above; "platformer" for games where the hero moves freely left/right, jumps between elevated platforms, and stomps enemies by landing on them
 - heroEmoji: one emoji that represents the player character (always required as fallback)
 - enemyEmoji: one emoji that represents the obstacle/enemy to dodge (always required as fallback)
 - heroSpriteId: optional — pick from the hero sprites list above if a good match exists; omit otherwise
@@ -53,9 +53,13 @@ Rules:
 - jumpForce: always 580
 
 Template examples:
-- "dog jumping over cats" → template: "runner" (side-scroll + jump)
+- "dog jumping over cats" → template: "runner" (side-scroll + jump OVER enemies)
 - "rocket dodging asteroids" → template: "runner"
 - "bunny hopping over carrots" → template: "runner"
+- "frog jumping on lily pads stomping flies" → template: "platformer" (multi-platform + stomp)
+- "mario-style platformer" → template: "platformer"
+- "knight jumping between platforms stomping goblins" → template: "platformer"
+- "cat jumping on clouds stomping birds" → template: "platformer"
 - "tank dodging missiles in an arena" → template: "topdown" (4-direction movement)
 - "overhead space game" → template: "topdown"
 - "mouse avoiding cats" → template: "topdown"
@@ -66,7 +70,22 @@ Template examples:
 - "arena shooter with obstacles" → template: "shooter"
 - If the prompt includes "[preferred template: topdown]", lean toward "topdown" unless the description clearly implies jumping/running
 - If the prompt includes "[preferred template: runner]", lean toward "runner" unless the description clearly implies overhead/arena movement
+- If the prompt includes "[preferred template: platformer]", use "platformer"
+- KEY DISTINCTION: "jumping OVER enemies" = runner; "jumping ON TOP OF / STOMPING enemies on platforms" = platformer
 - When in doubt, use "runner"
+
+Platformer template rules (only when template === "platformer"):
+- Include an optional "platformer" sub-object: { doubleJump?: boolean }
+- doubleJump: true → hero can jump a second time in mid-air
+- Platformer vocabulary:
+  - "platformer", "mario", "super mario", "platform game", "jump on platforms" → template: "platformer"
+  - "stomp enemies", "jump on enemies", "squish enemies", "jump on top of" → template: "platformer"
+  - "double jump", "can double jump", "mid-air jump" → platformer: { doubleJump: true }
+- speed: hero horizontal movement speed (150–280 is comfortable; default 200)
+- jumpForce: always 630 for platformer (or 580–680 range)
+- actions: omit for platformer (not supported in M11)
+- groundColor: "#5a8a5a" always
+- Background: use side-scrolling backgrounds (bg-sky, bg-forest, bg-desert, bg-space) — same as runner
 
 Vocabulary: detect these styles from the user's words and apply automatically:
 - "obstacle course", "obstacles", "hurdles", "hurdle", "parkour", "obstacle run" →
@@ -204,6 +223,9 @@ Other rules:
 - "switch to top-down" or "make it overhead" → update template to "topdown"
 - "switch to runner" or "make it side-scroll" → update template to "runner"
 - "switch to shooter" or "make it a shooting game" or "add shooting" → update template to "shooter"
+- "switch to platformer" or "make it a platformer" or "add platforms" → update template to "platformer"
+- "add double jump" → set platformer: { doubleJump: true }
+- "remove double jump" → set platformer: { doubleJump: false }
 
 Shooter template update rules (only when template === "shooter"):
 - "more walls", "more cover", "more obstacles" → increase shooter.wallCount by 2 (max 16)
@@ -310,11 +332,13 @@ export async function generateGameConfig(
 
     // Clamp speed to full range
     config.speed = Math.max(SPEED_MIN, Math.min(SPEED_MAX, config.speed || 250))
-    config.jumpForce = 580 // always fixed
+    // jumpForce: 630 for platformer (higher arc needed), 580 for all other templates
+    config.jumpForce = config.template === 'platformer' ? 630 : 580
     config.groundColor = '#5a8a5a' // always fixed
 
     // Validate template — only accept known values
-    if (config.template !== 'runner' && config.template !== 'topdown' && config.template !== 'shooter') {
+    const VALID_TEMPLATES = new Set(['runner', 'topdown', 'shooter', 'platformer'])
+    if (!VALID_TEMPLATES.has(config.template)) {
       config.template = isUpdate ? (currentConfig.template ?? 'runner') : 'runner'
     }
 
@@ -385,7 +409,7 @@ export async function generateGameConfig(
 const CLONE_KEYWORDS = [
   'lander', 'lunar lander', 'flappy', 'flappy bird', 'pong', 'breakout',
   'arkanoid', 'snake', 'asteroids', 'space invader', 'space invaders',
-  'tetris', 'platformer', 'mario', 'brick', 'tapper', 'frogger',
+  'tetris', 'mario', 'brick', 'tapper', 'frogger',
   'galaga', 'centipede', 'pacman', 'pac-man', 'clone',
 ]
 

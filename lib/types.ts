@@ -67,8 +67,12 @@ export interface GameDifficulty {
   lowObstacleEmoji?: string   // emoji for low obstacles, default '🪵'
 }
 
+export interface PlatformerConfig {
+  doubleJump?: boolean   // enable double-jump (default false)
+}
+
 export interface GameConfig {
-  template: 'runner' | 'topdown' | 'shooter'
+  template: 'runner' | 'topdown' | 'shooter' | 'platformer'
   heroEmoji: string
   heroSpriteId?: string    // catalog asset ID — overrides emoji rendering when set
   heroSpriteUrl?: string   // resolved full URL (injected by page.tsx, supports PNG + SVG)
@@ -85,6 +89,7 @@ export interface GameConfig {
   actions?: GameAction[]       // 0–3 AI-defined game-event behaviors
   difficulty?: GameDifficulty  // progression tuning; omit for engine defaults
   shooter?: ShooterConfig      // shooter template params; omit for engine defaults
+  platformer?: PlatformerConfig // platformer template params; omit for engine defaults
 }
 
 export const SPEED_MIN = 180

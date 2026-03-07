@@ -1,7 +1,7 @@
 # Kids Game Builder — Architecture Reference
 
 > **Purpose:** Research-first doc. Read this before opening source files.
-> Last updated: v1.0.3 (M11-prereq TypeScript split)
+> Last updated: v1.0.4 (M11 Platformer template)
 
 ---
 
@@ -19,7 +19,8 @@ Browser
       │    ├── action-system.js ActionSystem (lives, collectibles, shield, double-pts)
       │    ├── runner.js        startRunnerGame + RunnerScene
       │    ├── topdown.js       startTopDownGame + TopDownScene
-      │    └── shooter.js       startShooterGame + ShooterScene
+      │    ├── shooter.js       startShooterGame + ShooterScene
+      │    └── platformer.js    startPlatformerGame + PlatformerScene
       └── (source in src/game/ — see Build Pipeline below)
 ```
 
@@ -35,7 +36,8 @@ src/game/
  └── scenes/
       ├── runner.ts         → public/scenes/runner.js
       ├── topdown.ts        → public/scenes/topdown.js
-      └── shooter.ts        → public/scenes/shooter.js
+      ├── shooter.ts        → public/scenes/shooter.js
+      └── platformer.ts     → public/scenes/platformer.js
 ```
 
 **Key rules:**
@@ -74,7 +76,7 @@ src/game/
 
 ```typescript
 interface GameConfig {
-  template: 'runner' | 'topdown' | 'shooter'
+  template: 'runner' | 'topdown' | 'shooter' | 'platformer'
   title: string
   heroEmoji: string
   heroSpriteId?: string      // catalog ID (e.g. 'hero-soldier')
@@ -85,12 +87,17 @@ interface GameConfig {
   bgId?: string              // catalog background ID (e.g. 'bg-kenney-dark')
   bgUrl?: string             // resolved URL, injected by page.tsx
   backgroundColor: string   // hex fallback (e.g. '#2d4a2d')
-  groundColor: string        // runner only
-  speed: number              // 180–600; enemy speed (runner/topdown) or hero speed (shooter)
-  jumpForce: number          // runner only
-  actions?: GameAction[]     // 0–3 (runner/topdown only — NOT used in shooter)
-  difficulty?: GameDifficulty // runner/topdown spawn tuning; shooter uses baked-in ramp
+  groundColor: string        // runner/platformer only
+  speed: number              // 180–600; enemy speed (runner/topdown) or hero speed (platformer/shooter)
+  jumpForce: number          // runner (580) / platformer (630)
+  actions?: GameAction[]     // 0–3 (runner/topdown only — NOT used in shooter/platformer M11)
+  difficulty?: GameDifficulty // runner/topdown spawn tuning; not used in shooter/platformer
   shooter?: ShooterConfig    // shooter-specific params (see below)
+  platformer?: PlatformerConfig // platformer-specific params (see below)
+}
+
+interface PlatformerConfig {
+  doubleJump?: boolean   // enable double-jump mid-air (default false)
 }
 ```
 
@@ -293,6 +300,48 @@ wander randomly at 55px/s, skip all LOS checks, occasionally pick new random dir
 
 ---
 
+## PlatformerScene Deep Reference (`src/game/scenes/platformer.ts`)
+
+Key behavior: hero moves left/right on multi-height platforms and stomps enemies by landing on them.
+
+### Key Constants
+```
+W = window.innerWidth     H = window.innerHeight
+GROUND_Y = H * 0.84       GRAVITY = 1500 px/s²
+HERO_SPEED = 150–320      JUMP_FORCE = 520–750 (default 630)
+DOUBLE_JUMP = config.platformer?.doubleJump    NUM_ROWS = 3
+ROW_SPACING = (GROUND_Y - H*0.1) / (NUM_ROWS+1)
+```
+
+### Platform Layout
+- Ground: full-width rectangle at `GROUND_Y`
+- 3 rows of floating platforms above ground, spaced evenly
+- Each row split into 3 zones (0–33%, 33–66%, 66–100%); 1 platform per zone (78% fill chance; first zone always filled)
+- Platform width: 80–190 px; brown (0x8b6a3a) body + darker top edge (0x5a3a1a)
+
+### Physics
+- Custom gravity: `heroVY += GRAVITY * dt`, `hero.y += heroVY * dt`
+- Platform collision: one-way (land from above only); swept detection `prevHeroY <= p.y && hy >= p.y`; 8px horizontal tolerance
+- Hero wraps at screen edges (arcade feel: exit left → appear right and vice versa)
+- Falls below `H + 80` → game over
+
+### Hero Controls
+- Keyboard: ← → / A D to move; SPACE / UP / W to jump
+- Touch: hold left half → move left; hold right half → move right; any tap → jump
+- `doJump()`: jumpCount 0→1 (first jump), 1→2 (double-jump if DOUBLE_JUMP); mid-air jump = 0.80× force
+
+### Enemy Patrol
+- Spawns on every floating platform (w ≥ 80px)
+- Patrols platform, reverses at edges with 18px margin, speed 45–88 px/s
+- Flips sprite/emoji to face direction
+
+### Collision
+- **Stomp**: `heroVY > 80 && heroBottom < eTop + 22` → kill enemy, bounce hero upward at 0.58× JUMP_FORCE, `jumpCount = 1`
+- **Side hit**: `ActionSystem.handleCollision()` → game over (or lose life if lives action active)
+- Stomp → `score++`; clear all enemies → wave bonus (+3 pts) + respawn
+
+---
+
 ## RunnerScene Deep Reference (`src/game/scenes/runner.ts`)
 
 Key behavior: hero jumps over/ducks under enemies scrolling right→left.
@@ -320,10 +369,11 @@ Two prompts: `CREATE_SYSTEM_PROMPT` (new game) and `UPDATE_SYSTEM_PROMPT` (chang
 
 Both prompts include (in order):
 1. `getCatalogSummary()` — available sprites + backgrounds
-2. Template classification rules
+2. Template classification rules (runner / topdown / shooter / platformer)
 3. Style/theme vocabulary mappings
-4. Shooter-specific rules (template === 'shooter')
-5. Background selection by template (runner=side-scroll, topdown/shooter=floor tiles)
+4. Platformer-specific rules (template === 'platformer')
+5. Shooter-specific rules (template === 'shooter')
+6. Background selection by template (runner/platformer=side-scroll, topdown/shooter=floor tiles)
 6. Sprite + background combos
 7. Difficulty + actions rules
 8. Full GameConfig JSON schema + example

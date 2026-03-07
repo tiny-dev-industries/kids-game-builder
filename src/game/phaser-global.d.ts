@@ -44,10 +44,11 @@ declare function createSounds(): {
 declare function makePhaserConfig(bgColor: string, sceneClass: any): any;
 declare function startGame(config: any): void;
 
-// scene entry points (defined in runner/topdown/shooter, called from shared.ts)
+// scene entry points (defined in scene files, called from shared.ts)
 declare function startRunnerGame(config: any): void;
 declare function startTopDownGame(config: any): void;
 declare function startShooterGame(config: any): void;
+declare function startPlatformerGame(config: any): void;
 
 // ActionSystem is declared in action-system.ts (a script file — no imports/exports).
 // TypeScript infers its type from that file; no ambient re-declaration needed here.
