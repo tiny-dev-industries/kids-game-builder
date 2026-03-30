@@ -1,0 +1,4 @@
+[submodule ".brain"]
+	path = .brain
+	url = git@github.com:save-your-brain-co/brain.git
+	branch = main
